@@ -150,17 +150,21 @@ const trackUnauthorizedAccess = (req, res, next) => {
 
   res.send = function (data) {
     if (res.statusCode === 401 || res.statusCode === 403) {
-      logSuspiciousActivity({
-        activity: "UNAUTHORIZED_ACCESS_ATTEMPT",
-        severity: "high",
-        userId: req.user?.id || "anonymous",
-        ipAddress: req.ip,
-        endpoint: req.path,
-        details: {
-          method: req.method,
-          statusCode: res.statusCode,
-        },
-      });
+      const ip = req.ip || '';
+      const isLocalhost = ip === '::1' || ip === '127.0.0.1' || ip.startsWith('::ffff:127.');
+      if (!isLocalhost) {
+        logSuspiciousActivity({
+          activity: "UNAUTHORIZED_ACCESS_ATTEMPT",
+          severity: "high",
+          userId: req.user?.id || "anonymous",
+          ipAddress: ip,
+          endpoint: req.path,
+          details: {
+            method: req.method,
+            statusCode: res.statusCode,
+          },
+        });
+      }
     }
 
     return originalSend.call(this, data);

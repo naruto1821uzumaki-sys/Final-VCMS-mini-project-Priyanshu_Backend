@@ -12,11 +12,11 @@ const connectDB = async (retries = 5) => {
     
     console.log(`🔄 Attempting to connect to MongoDB...`);
     
-    // Optimized connection options for MongoDB Atlas
+    // Optimized connection options for MongoDB Atlas (Windows DNS fix)
     const connectionOptions = {
-      serverSelectionTimeoutMS: 15000,     // 15 seconds for server selection (Atlas can be slower)
-      socketTimeoutMS: 60000,               // 60 seconds for socket operations
-      connectTimeoutMS: 15000,              // 15 seconds for initial connection
+      serverSelectionTimeoutMS: 30000,     // 30 seconds (increased for Windows DNS)
+      socketTimeoutMS: 75000,               // 75 seconds for socket operations
+      connectTimeoutMS: 30000,              // 30 seconds for initial connection (increased)
       family: 4,                            // Use IPv4 (fixes some connection issues)
       maxPoolSize: 10,                      // Max connection pool size
       minPoolSize: 2,                       // Min connection pool size
@@ -24,6 +24,13 @@ const connectDB = async (retries = 5) => {
       w: "majority",                        // Write concern
       maxIdleTimeMS: 45000,                 // Close idle connections after 45 seconds
       waitQueueTimeoutMS: 10000,            // Wait up to 10 seconds for a connection
+      heartbeatFrequencyMS: 10000,          // Check connection health every 10 seconds
+      // Windows DNS fix: Add these options to help with SRV resolution
+      serverApi: null,                      // Disable strict server API
+      ssl: true,                            // Ensure SSL is enabled
+      tls: true,                            // Enable TLS
+      tlsAllowInvalidCertificates: false,   // Keep certificates valid
+      tlsAllowInvalidHostnames: false,      // Keep hostnames valid
     };
     
     await mongoose.connect(mongoUri, connectionOptions);

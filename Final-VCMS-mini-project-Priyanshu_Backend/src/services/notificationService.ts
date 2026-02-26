@@ -98,7 +98,7 @@ export const notificationService = {
    */
   markAsRead: async (id: string): Promise<ServiceResponse<Notification>> => {
     try {
-      const res = await api.put(`/notifications/${id}/read`);
+      const res = await api.post(`/notifications/${id}/mark-read`, {});
       return {
         success: true,
         message: 'Notification marked as read',
@@ -119,7 +119,7 @@ export const notificationService = {
    */
   markAllAsRead: async (): Promise<ServiceResponse<{ markedCount: number }>> => {
     try {
-      const res = await api.put('/notifications/read-all');
+      const res = await api.post('/notifications/mark-all-read', {});
       return {
         success: true,
         message: 'All notifications marked as read',

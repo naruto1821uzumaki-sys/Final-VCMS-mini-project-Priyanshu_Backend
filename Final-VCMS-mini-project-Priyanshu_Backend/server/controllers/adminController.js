@@ -77,6 +77,21 @@ const getDashboardStats = async (req, res) => {
             },
             { $count: "count" }
           ],
+          // Pending patients waiting approval
+          pendingPatients: [
+            {
+              $match: {
+                role: "patient",
+                approvalStatus: { $in: ["pending", null] },
+                isApproved: { $ne: true },
+                $or: [
+                  { isDeleted: { $exists: false } },
+                  { isDeleted: false }
+                ]
+              }
+            },
+            { $count: "count" }
+          ],
         }
       }
     ]);
@@ -158,6 +173,7 @@ const getDashboardStats = async (req, res) => {
         totalDoctors: extractCount(userStats.totalDoctors),
         totalPatients: extractCount(userStats.totalPatients),
         pendingDoctors: extractCount(userStats.pendingDoctors),
+        pendingPatients: extractCount(userStats.pendingPatients),
 
         // Appointment Statistics
         totalAppointments: extractCount(appStats.totalAppointments),
@@ -354,6 +370,8 @@ const approveDoctor = async (req, res) => {
     }
 
     doctor.approvalStatus = 'approved';
+    doctor.isPublic = true;
+    doctor.isActive = true;
     doctor.approvedBy = admin._id;
     doctor.approvedAt = new Date();
     await doctor.save();

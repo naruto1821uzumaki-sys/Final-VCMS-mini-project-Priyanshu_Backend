@@ -7,9 +7,10 @@
 const path = require('path');
 const fs = require('fs');
 
-// Load .env file if it exists
-if (fs.existsSync(path.join(__dirname, '.env'))) {
-  require('dotenv').config({ path: path.join(__dirname, '.env') });
+// Load .env file from server/ directory (one level up from config/)
+const envPath = path.join(__dirname, '..', '.env');
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
 }
 
 /**

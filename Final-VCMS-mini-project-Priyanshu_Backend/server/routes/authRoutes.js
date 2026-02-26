@@ -8,8 +8,10 @@ const {
   changePassword,
   sendOtp,
   verifyOtp,
+  sendEmailOtp,
+  verifyEmailOtp,
   resetPassword,
-  // ✅ NEW: Import enhanced auth endpoints
+  resetPasswordEmail,
   refreshAccessToken,
   logoutUser,
   logoutFromAllDevices,
@@ -195,6 +197,61 @@ router.post(
   ],
   validateRequest,
   resetPassword
+);
+
+// Email OTP Routes (Better for College Project Testing)
+router.post(
+  "/send-email-otp",
+  [
+    check('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Valid email is required'),
+  ],
+  validateRequest,
+  sendEmailOtp
+);
+
+router.post(
+  "/verify-email-otp",
+  [
+    check('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Valid email is required'),
+    check('code')
+      .notEmpty()
+      .withMessage('OTP code is required'),
+  ],
+  validateRequest,
+  verifyEmailOtp
+);
+
+router.post(
+  "/reset-password-email",
+  [
+    check('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Valid email is required'),
+    check('code')
+      .notEmpty()
+      .withMessage('OTP code is required'),
+    check('newPassword')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters')
+      .matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/)
+      .withMessage('Password must have 1 uppercase, 1 number, and 1 special character'),
+    check('confirmPassword')
+      .custom((value, { req }) => {
+        if (value !== req.body.newPassword) {
+          throw new Error('Passwords do not match');
+        }
+        return true;
+      }),
+  ],
+  validateRequest,
+  resetPasswordEmail
 );
 
 // ✅ NEW: Refresh Token Endpoint

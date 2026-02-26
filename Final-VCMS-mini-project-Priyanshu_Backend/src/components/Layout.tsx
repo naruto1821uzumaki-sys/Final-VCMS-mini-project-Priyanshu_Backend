@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import Chatbot from "@/components/Chatbot";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,25 +10,54 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Activity, LogOut, User, ArrowLeft, LayoutDashboard, Bell } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Activity, LogOut, User, ArrowLeft, LayoutDashboard, Bell, Phone, Info } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { useSocket } from "@/hooks/useSocket";
+import api from "@/services/api";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { user, logout, isAuthenticated, notifications } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
+  const { socket } = useSocket();
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Initialize
+  const fetchUnread = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await api.get("/notifications/unread-count");
+      setUnreadCount(res.data?.unreadCount ?? 0);
+    } catch { /* ignore */ }
+  }, [isAuthenticated]);
+
+  // Fetch unread count on mount and when location changes (user navigates away from notifications page)
+  useEffect(() => { fetchUnread(); }, [fetchUnread, location.pathname]);
+
+  // Real-time: increment badge on new notifications
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 100);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!socket) return;
+    const bump = () => setUnreadCount((c) => c + 1);
+    socket.on("notification", bump);
+    socket.on("notification:warning", bump);
+    socket.on("admin:warning", bump);
+    return () => {
+      socket.off("notification", bump);
+      socket.off("notification:warning", bump);
+      socket.off("admin:warning", bump);
+    };
+  }, [socket]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
+
+  // Initialize loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Extract initials from name (e.g., "John Doe" -> "JD")
   const initials = user ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : "";
@@ -38,8 +68,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   );
 
   const showBackArrow = isAuthenticated && !isDashboard;
-
-  const unreadCount = notifications.filter((n) => n.userId === user?.id && !n.read).length;
 
   // Hide Sign In / Register link in header when already on that page
   const currentPath = location.pathname.replace(/\/$/, "");
@@ -82,12 +110,32 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
           {/* Right: Notification + Profile */}
           <div className="flex items-center gap-2">
-            {isAuthenticated && user && user.role !== "admin" && (
+            {/* About Us & Contact Us quick links — visible to all users */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:flex items-center gap-1.5 h-9 px-3 text-muted-foreground hover:text-foreground text-xs font-medium"
+              onClick={() => navigate("/about-us")}
+            >
+              <Info className="h-3.5 w-3.5" />
+              About
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:flex items-center gap-1.5 h-9 px-3 text-muted-foreground hover:text-foreground text-xs font-medium"
+              onClick={() => navigate("/contact")}
+            >
+              <Phone className="h-3.5 w-3.5" />
+              Contact
+            </Button>
+            {/* Notification bell for ALL authenticated users */}
+            {isAuthenticated && user && (
               <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => navigate("/notifications")}>
                 <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground font-bold">
-                    {unreadCount}
+                    {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </Button>
@@ -137,12 +185,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             ) : (
               <div className="flex items-center gap-2">
                 {!isLoginPage && (
-                  <Button size="sm" asChild>
+                  <Button size="sm" className="h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium" asChild>
                     <Link to="/login">Sign In</Link>
                   </Button>
                 )}
                 {!isRegisterPage && (
-                  <Button size="sm" asChild>
+                  <Button size="sm" className="h-9 px-3 bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs font-medium" asChild>
                     <Link to="/register">Register</Link>
                   </Button>
                 )}
@@ -153,6 +201,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       </header>
 
       <main className="flex-1">{children}</main>
+      
+      {/* Chatbot Floating Widget */}
+      <Chatbot />
     </div>
   );
 };

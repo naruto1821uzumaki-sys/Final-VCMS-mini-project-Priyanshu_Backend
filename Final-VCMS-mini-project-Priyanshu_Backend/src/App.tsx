@@ -8,10 +8,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ClinicProvider } from "@/contexts/ClinicContext";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Chatbot from "@/components/Chatbot";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminApprovals from "./pages/AdminApprovals";
@@ -24,6 +24,7 @@ import DoctorPatients from "./pages/DoctorPatients";
 import PatientDashboard from "./pages/PatientDashboard";
 import PatientAppointments from "./pages/PatientAppointments";
 import PatientMedicalHistory from "./pages/PatientMedicalHistory";
+import PatientAIAnalyzer from "./pages/PatientAIAnalyzer";
 import PatientPrescriptions from "./pages/PatientPrescriptions";
 import VideoConsultation from "./pages/VideoConsultation";
 import ViewPrescription from "./pages/ViewPrescription";
@@ -113,6 +114,18 @@ const router = createBrowserRouter([
         <ClinicProvider>
           <Layout>
             <Register />
+          </Layout>
+        </ClinicProvider>
+      </AuthProvider>
+    ),
+  },
+  {
+    path: "/forgot-password",
+    element: (
+      <AuthProvider>
+        <ClinicProvider>
+          <Layout>
+            <ForgotPassword />
           </Layout>
         </ClinicProvider>
       </AuthProvider>
@@ -359,13 +372,27 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/patient/history",
+    path: "/patient/medical-history",
     element: (
       <AuthProvider>
         <ClinicProvider>
           <Layout>
             <ProtectedRoute allowedRoles={["patient"]}>
               <PatientMedicalHistory />
+            </ProtectedRoute>
+          </Layout>
+        </ClinicProvider>
+      </AuthProvider>
+    ),
+  },
+  {
+    path: "/patient/ai-analyzer",
+    element: (
+      <AuthProvider>
+        <ClinicProvider>
+          <Layout>
+            <ProtectedRoute allowedRoles={["patient"]}>
+              <PatientAIAnalyzer />
             </ProtectedRoute>
           </Layout>
         </ClinicProvider>

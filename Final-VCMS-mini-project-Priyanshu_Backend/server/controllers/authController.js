@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const generateToken = require('../utils/generateToken');
 const tokenManager = require('../utils/tokenManager');
 const accountLockout = require('../utils/accountLockout');
+const { emailOtpStore, sendEmailOtp, verifyEmailOtp, clearEmailOtp } = require('../utils/emailOtp');
 
 // Constants
 const LOCKOUT_ATTEMPTS = 5;
@@ -129,10 +130,23 @@ exports.registerUser = async (req, res) => {
       }
     }
 
+    // Generate unique username from email (before @) + random number
+    const emailPrefix = emailLower.split('@')[0];
+    const randomSuffix = Math.floor(Math.random() * 10000);
+    let generatedUsername = `${emailPrefix}${randomSuffix}`;
+    
+    // Ensure username is unique
+    let usernameExists = await User.findOne({ username: generatedUsername });
+    while (usernameExists) {
+      const newSuffix = Math.floor(Math.random() * 10000);
+      generatedUsername = `${emailPrefix}${newSuffix}`;
+      usernameExists = await User.findOne({ username: generatedUsername });
+    }
+
     // Create new user (medicalHistory will be added later via profile)
     const user = await User.create({
       name: name || `${firstName || ''} ${lastName || ''}`.trim(),
-      // username field removed; identification now uses name/email
+      username: generatedUsername,
       email: emailLower,
       password: hashedPassword,
       phone: phone?.replace(/\D/g, ''),
@@ -490,6 +504,28 @@ exports.sendOtp = async (req, res) => {
   }
 };
 
+// Send OTP via Email (Better for College Project Testing)
+exports.sendEmailOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email required" });
+    }
+
+    const otp = await sendEmailOtp(email);
+
+    res.json({
+      success: true,
+      message: `OTP sent to ${email}`,
+      ...(process.env.NODE_ENV === 'development' && { otp })
+    });
+  } catch (error) {
+    console.error("sendEmailOtp error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // 🔹 VERIFY OTP
 exports.verifyOtp = async (req, res) => {
   try {
@@ -526,6 +562,31 @@ exports.verifyOtp = async (req, res) => {
     });
   } catch (error) {
     console.error("verifyOtp error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Verify Email OTP
+exports.verifyEmailOtp = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ message: "Email and OTP code required" });
+    }
+
+    const result = verifyEmailOtp(email, code);
+    if (!result.success) {
+      return res.status(400).json({ message: result.message });
+    }
+
+    res.json({
+      success: true,
+      message: "OTP verified successfully",
+      verified: true
+    });
+  } catch (error) {
+    console.error("verifyEmailOtp error:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -591,6 +652,63 @@ exports.resetPassword = async (req, res) => {
     });
   } catch (error) {
     console.error("resetPassword error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Reset Password with Email OTP
+exports.resetPasswordEmail = async (req, res) => {
+  try {
+    const { email, code, newPassword, confirmPassword } = req.body;
+
+    if (!email || !code || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters with 1 uppercase, 1 number, and 1 special character"
+      });
+    }
+
+    const storedOtp = emailOtpStore.get(email);
+
+    if (!storedOtp) {
+      return res.status(400).json({ message: "OTP not found. Please request a new one." });
+    }
+
+    if (!storedOtp.verified) {
+      return res.status(400).json({ message: "OTP not verified. Please verify OTP first." });
+    }
+
+    if (Date.now() > storedOtp.expiresAt) {
+      clearEmailOtp(email);
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found with this email" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.refreshTokens = [];
+    await user.save();
+
+    clearEmailOtp(email);
+
+    res.json({
+      success: true,
+      message: "Password reset successfully. Please login with your new password."
+    });
+  } catch (error) {
+    console.error("resetPasswordEmail error:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };

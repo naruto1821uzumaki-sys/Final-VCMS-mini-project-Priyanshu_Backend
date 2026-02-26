@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, FileText, Calendar, Mail, Phone, Award } from "lucide-react";
+import { CheckCircle, XCircle, FileText, Calendar, Mail, Phone, Award, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/services/api";
 
@@ -51,8 +51,8 @@ const AdminApprovals = () => {
         api.get('/admin/doctors/pending-list').catch(() => ({ data: { doctors: [] } })),
         api.get('/admin/patients/pending').catch(() => ({ data: { patients: [] } })),
       ]);
-      const doctors = doctorsRes.data?.doctors?.filter((d: any) => d.status === 'pending' || !d.isApproved) || [];
-      const patients = patientsRes.data?.patients?.filter((p: any) => p.status === 'pending' || !p.isApproved) || [];
+      const doctors = doctorsRes.data?.doctors?.filter((d: any) => d.approvalStatus === 'pending') || [];
+      const patients = patientsRes.data?.patients?.filter((p: any) => p.approvalStatus === 'pending') || [];
       setPendingDoctors(doctors);
       setPendingPatients(patients);
     } catch (err) {
@@ -173,11 +173,16 @@ const AdminApprovals = () => {
   return (
     <div className="container mx-auto px-4 py-8 space-y-6 max-w-6xl pb-12">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">Manage Approvals</h1>
-        <p className="text-muted-foreground mt-2 text-lg">
-          Review and approve new doctor and patient registrations
-        </p>
+      <div className="rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 p-6 text-white shadow-xl">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Manage Approvals</h1>
+            <p className="mt-1 text-orange-100 text-sm">Review and approve new doctor and patient registrations</p>
+          </div>
+          <Button variant="outline" size="sm" className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => fetchPendingUsers()}>
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -235,12 +240,16 @@ const AdminApprovals = () => {
       {approvalTab === "doctors" && (
         <div className="space-y-4">
           {pendingDoctors.length === 0 ? (
-            <Card className="border-0 shadow-lg">
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-semibold text-slate-700">✓ No pending doctor approvals</p>
-                  <p className="text-sm text-muted-foreground mt-2">All doctor registrations have been reviewed</p>
+            <Card className="border-0 shadow-md">
+              <CardContent className="py-10">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-100 rounded-full flex-shrink-0">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">All doctor registrations reviewed</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">New applications will appear here when submitted.</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -326,12 +335,16 @@ const AdminApprovals = () => {
       {approvalTab === "patients" && (
         <div className="space-y-4">
           {pendingPatients.length === 0 ? (
-            <Card className="border-0 shadow-lg">
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-semibold text-slate-700">✓ No pending patient approvals</p>
-                  <p className="text-sm text-muted-foreground mt-2">All patient registrations have been reviewed</p>
+            <Card className="border-0 shadow-md">
+              <CardContent className="py-10">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-100 rounded-full flex-shrink-0">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">All patient registrations reviewed</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">New applications will appear here when submitted.</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

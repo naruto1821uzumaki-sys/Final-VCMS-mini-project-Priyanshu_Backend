@@ -11,6 +11,29 @@
   import { Alert, AlertDescription } from "@/components/ui/alert";
   import { Textarea } from "@/components/ui/textarea";
 
+  const SPECIALIZATIONS = [
+    "Cardiology",
+    "Dermatology",
+    "Endocrinology",
+    "Gastroenterology",
+    "General Medicine",
+    "General Surgery",
+    "Gynecology & Obstetrics",
+    "Hematology",
+    "Nephrology",
+    "Neurology",
+    "Oncology",
+    "Ophthalmology",
+    "Orthopedics",
+    "Otolaryngology (ENT)",
+    "Pediatrics",
+    "Psychiatry",
+    "Pulmonology",
+    "Radiology",
+    "Rheumatology",
+    "Urology",
+  ] as const;
+
   const Register = () => {
     const [role, setRole] = useState<UserRole>("patient");
     const [formData, setFormData] = useState({
@@ -20,10 +43,11 @@
       phone: "",
       password: "",
       confirmPassword: "",
-      specialization: "",
+      specialization: "", // holds dropdown value (or "other")
       experience: "", // years of practice for doctors
       dateOfBirth: "",
     });
+    const [otherSpecialization, setOtherSpecialization] = useState("");
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const { register } = useAuth();
@@ -118,6 +142,13 @@
         if (isNaN(exp) || exp < 0) {
           newErrors.experience = "Enter a valid number of years";
         }
+        if (!formData.specialization || formData.specialization === '') {
+          newErrors.specialization = "Please select a specialization";
+        } else if (formData.specialization === 'other') {
+          if (!otherSpecialization || otherSpecialization.trim() === '') {
+            newErrors.otherSpecialization = "Please specify your specialization";
+          }
+        }
       }
 
       setErrors(newErrors);
@@ -165,7 +196,6 @@
           }
           break;
         }
-        // username removed - validation not needed here
         case "email":
           if (!validateEmail(value)) setError("email", "Valid Gmail address is required (example@gmail.com)");
           else clearError("email");
@@ -197,6 +227,16 @@
             if (isNaN(num) || num < 0) setError("experience", "Enter a valid number of years");
             else clearError("experience");
           }
+          break;
+        case "specialization":
+          if (role === "doctor") {
+            if (!value || value === '') setError("specialization", "Please select a specialization");
+            else clearError("specialization");
+          }
+          break;
+        case "otherSpecialization":
+          if (!value || value.trim() === '') setError("otherSpecialization", "Please specify your specialization");
+          else clearError("otherSpecialization");
           break;
         default:
           break;
@@ -233,7 +273,7 @@
         confirmPassword: formData.confirmPassword,
         role,
         ...(role === "doctor" && {
-          specialization: formData.specialization,
+          specialization: formData.specialization === 'other' ? otherSpecialization.trim() : formData.specialization,
           experience: parseInt(formData.experience) || 0,
         }),
         ...(role === "patient" && {
@@ -271,7 +311,7 @@
             <p className="text-muted-foreground">Join MediConnect as a patient or doctor</p>
           </div>
 
-          <Card className="shadow-xl bg-white rounded-xl overflow-hidden">
+          <Card className="shadow-xl bg-card rounded-xl overflow-hidden">
             <form onSubmit={handleSubmit} noValidate>
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg text-foreground">Registration</CardTitle>
@@ -348,8 +388,6 @@
                   </div>
                 </div>
 
-                {/* Username removed: generated automatically from name or email */}
-
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input 
@@ -384,16 +422,50 @@
                   <>
                     <div className="space-y-2">
                       <Label htmlFor="specialization">Specialization *</Label>
-                      <Input 
-                        id="specialization" 
-                        name="specialization" 
-                        value={formData.specialization} 
-                        onChange={handleChange} 
-                        onBlur={handleBlur}
-                        className={errors.specialization ? "border-destructive" : ""}
-                      />
+                      <Select
+                        value={formData.specialization}
+                        onValueChange={(val) => {
+                          setFormData((prev) => ({ ...prev, specialization: val }));
+                          if (val) setErrors((prev) => { const e = { ...prev }; delete e.specialization; return e; });
+                          if (val !== 'other') {
+                            setOtherSpecialization("");
+                            setErrors((prev) => { const e = { ...prev }; delete e.otherSpecialization; return e; });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className={errors.specialization ? "border-destructive" : ""}>
+                          <SelectValue placeholder="Select specialization" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {SPECIALIZATIONS.map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                       {errors.specialization && <p className="text-xs text-destructive font-medium">{errors.specialization}</p>}
                     </div>
+                    {formData.specialization === 'other' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="otherSpecialization">Please specify *</Label>
+                        <Input
+                          id="otherSpecialization"
+                          name="otherSpecialization"
+                          placeholder="Enter your specialization"
+                          value={otherSpecialization}
+                          onChange={(e) => {
+                            setOtherSpecialization(e.target.value);
+                            if (e.target.value.trim()) setErrors((prev) => { const er = { ...prev }; delete er.otherSpecialization; return er; });
+                          }}
+                          onBlur={(e) => {
+                            if (!e.target.value.trim()) setErrors((prev) => ({ ...prev, otherSpecialization: "Please specify your specialization" }));
+                          }}
+                          className={errors.otherSpecialization ? "border-destructive" : ""}
+                        />
+                        {errors.otherSpecialization && <p className="text-xs text-destructive font-medium">{errors.otherSpecialization}</p>}
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="experience">Experience (years) *</Label>
                       <Input 
@@ -426,7 +498,6 @@
                       />
                       {errors.dateOfBirth && <p className="text-xs text-destructive font-medium">{errors.dateOfBirth}</p>}
                     </div>
-                    {/* Medical history will be provided later in the patient's dashboard */}
                   </>
                 )}
 
@@ -479,7 +550,6 @@
                   {loading ? "Creating account..." : "Create Account"}
                   {!loading && <ArrowRight className="h-4 w-4" />}
                 </Button>
-                {/* Sign In link intentionally hidden on the Register page */}
               </CardFooter>
             </form>
           </Card>

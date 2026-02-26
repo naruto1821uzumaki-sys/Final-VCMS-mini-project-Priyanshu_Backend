@@ -146,7 +146,7 @@ export const adminService = {
    */
   approveDoctor: async (doctorId: string): Promise<ServiceResponse<any>> => {
     try {
-      const res = await api.put(`/admin/doctors/${doctorId}/approve`);
+      const res = await api.post(`/admin/doctors/${doctorId}/approve`);
       return {
         success: true,
         message: 'Doctor approved',
@@ -169,7 +169,7 @@ export const adminService = {
    */
   rejectDoctor: async (doctorId: string, reason: string): Promise<ServiceResponse<any>> => {
     try {
-      const res = await api.put(`/admin/doctors/${doctorId}/reject`, { reason });
+      const res = await api.post(`/admin/doctors/${doctorId}/reject`, { reason });
       return {
         success: true,
         message: 'Doctor rejected',

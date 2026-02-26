@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSocket } from "@/hooks/useSocket";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/services/api";
-import { FileText, Download, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { FileText, Download, CheckCircle2, Clock, AlertCircle, Pill, X, Stethoscope, CalendarDays } from "lucide-react";
+import PrescriptionAISummary from "@/components/PrescriptionAISummary";
 
 interface Medication {
   name: string;
@@ -76,7 +75,7 @@ const PatientPrescriptions = () => {
   const fetchPrescriptions = async () => {
     try {
       setLoading(true);
-      let url = `/api/prescriptions/patient/${user?._id}`;
+      let url = `/prescriptions/patient/${user?._id}`;
       if (statusFilter !== "all") {
         url += `?status=${statusFilter}`;
       }
@@ -98,7 +97,7 @@ const PatientPrescriptions = () => {
   const handleViewPrescription = async (prescription: Prescription) => {
     if (prescription.status === "issued" && !prescription.viewedAt) {
       try {
-        await api.post(`/api/prescriptions/${prescription._id}/view`);
+        await api.post(`/prescriptions/${prescription._id}/view`);
         toast({ title: "Success", description: "Prescription marked as viewed" });
         fetchPrescriptions();
       } catch (error: any) {
@@ -114,7 +113,7 @@ const PatientPrescriptions = () => {
 
   const handlePickupPrescription = async (prescriptionId: string) => {
     try {
-      const response = await api.post(`/api/prescriptions/${prescriptionId}/pickup`, {});
+      const response = await api.post(`/prescriptions/${prescriptionId}/pickup`, {});
       if (response.data?.success) {
         toast({ title: "Success", description: "Prescription marked as picked up" });
         fetchPrescriptions();
@@ -131,31 +130,21 @@ const PatientPrescriptions = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "issued":
-        return <Clock className="h-4 w-4 text-blue-500" />;
-      case "viewed":
-        return <FileText className="h-4 w-4 text-yellow-500" />;
-      case "picked_up":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "cancelled":
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return null;
+      case "issued":   return <Clock className="h-4 w-4 text-primary" />;
+      case "viewed":   return <FileText className="h-4 w-4 text-secondary" />;
+      case "picked_up": return <CheckCircle2 className="h-4 w-4 text-secondary" />;
+      case "cancelled": return <AlertCircle className="h-4 w-4 text-destructive" />;
+      default: return null;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
-      case "issued":
-        return "bg-blue-100 text-blue-800";
-      case "viewed":
-        return "bg-yellow-100 text-yellow-800";
-      case "picked_up":
-        return "bg-green-100 text-green-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "issued":   return "bg-primary/10 text-primary";
+      case "viewed":   return "bg-secondary/10 text-secondary";
+      case "picked_up": return "bg-secondary/20 text-secondary";
+      case "cancelled": return "bg-destructive/10 text-destructive";
+      default: return "bg-muted text-muted-foreground";
     }
   };
 
@@ -163,10 +152,10 @@ const PatientPrescriptions = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5 p-4 md:p-6">
         <div className="animate-pulse space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 bg-muted rounded"></div>
+            <div key={i} className="h-28 bg-muted rounded-2xl" />
           ))}
         </div>
       </div>
@@ -174,131 +163,122 @@ const PatientPrescriptions = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6 max-w-6xl">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">My Prescriptions</h1>
-        <p className="text-muted-foreground">View and manage your prescriptions</p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5 p-4 md:p-6 space-y-5">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-6 shadow-lg border border-primary/20">
+        <div className="absolute -top-4 -right-4 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-8 -left-4 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1">
+            <p className="text-primary-foreground/80 text-sm font-medium mb-1">My Health 📊</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground">Prescriptions</h1>
+            <p className="text-primary-foreground/70 mt-1 text-sm">All prescriptions issued by your doctors with AI-powered summaries.</p>
+          </div>
+          <div className="bg-white/15 backdrop-blur-sm rounded-xl px-5 py-3 text-center">
+            <p className="text-2xl font-bold text-primary-foreground">{prescriptions.length}</p>
+            <p className="text-primary-foreground/70 text-xs mt-0.5">Total</p>
+          </div>
+        </div>
       </div>
 
       {/* Status Filter */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-1 bg-white border border-border rounded-xl p-1 w-fit shadow-sm flex-wrap">
         {["all", "issued", "viewed", "picked_up", "cancelled"].map((status) => (
-          <Button
+          <button
             key={status}
-            variant={statusFilter === status ? "default" : "outline"}
-            size="sm"
             onClick={() => setStatusFilter(status)}
-            className="capitalize"
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
+              statusFilter === status
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            {status === "picked_up" ? "Picked Up" : status}
-          </Button>
+            {status === "picked_up" ? "Picked Up" : status.charAt(0).toUpperCase() + status.slice(1)}
+          </button>
         ))}
       </div>
 
-      {/* Prescriptions Grid */}
+      {/* Prescriptions list */}
       {prescriptions.length === 0 ? (
-        <Card className="border-0 shadow-md">
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground">No prescriptions found</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-border bg-white shadow-sm">
+          <div className="py-16 flex flex-col items-center gap-3 text-center">
+            <div className="h-16 w-16 rounded-full bg-accent flex items-center justify-center">
+              <FileText className="h-8 w-8 text-primary" />
+            </div>
+            <p className="font-semibold">No prescriptions found</p>
+            <p className="text-sm text-muted-foreground">Your doctor will add prescriptions after your appointment</p>
+          </div>
+        </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="space-y-3">
           {prescriptions.map((rx) => (
-            <Card key={rx._id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
-              <CardContent className="py-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                        <FileText className="h-5 w-5" />
-                      </div>
+            <div key={rx._id} className="rounded-2xl border border-border bg-white shadow-sm hover:shadow-md transition-shadow">
+              {/* Top stripe by status */}
+              <div className={`h-1 rounded-t-2xl ${rx.status === 'cancelled' ? 'bg-destructive' : rx.status === 'picked_up' ? 'bg-secondary' : 'bg-primary'}`} />
+              <div className="p-5">
+                <div className="flex items-start gap-4">
+                  <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Pill className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div>
-                        <h3 className="font-semibold">Diagnosis: {rx.diagnosis}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Dr. {rx.doctorId?.name || "Unknown"}
+                        <p className="font-bold text-foreground">{rx.diagnosis}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Stethoscope className="h-3.5 w-3.5" /> Dr. {rx.doctorId?.name || 'Unknown'}
                         </p>
                       </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-semibold capitalize flex items-center gap-1.5 ${getStatusBadgeClass(rx.status)}`}>
+                        {getStatusIcon(rx.status)}
+                        {rx.status === 'picked_up' ? 'Picked Up' : rx.status}
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Issued</p>
-                        <p className="font-medium">
-                          {rx.issuedAt
-                            ? new Date(rx.issuedAt).toLocaleDateString()
-                            : "Not issued"}
-                        </p>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1.5 mt-3 text-sm">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        <span className="text-xs">Issued: {rx.issuedAt ? new Date(rx.issuedAt).toLocaleDateString() : '—'}</span>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Valid Until</p>
-                        <p
-                          className={`font-medium ${
-                            isExpired(rx.validUntil) ? "text-destructive" : ""
-                          }`}
-                        >
-                          {new Date(rx.validUntil).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Medications</p>
-                        <p className="font-medium">{rx.medications.length} item(s)</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Status</p>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(rx.status)}
-                          <span className="capitalize">{rx.status}</span>
-                        </div>
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5" />
+                        <span className={`text-xs ${isExpired(rx.validUntil) ? 'text-destructive font-semibold' : ''}`}>
+                          Valid until: {new Date(rx.validUntil).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
 
                     {rx.medications.length > 0 && (
-                      <div className="mt-4 text-sm">
-                        <p className="text-xs text-muted-foreground mb-2">Medications:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {rx.medications.map((med, idx) => (
-                            <Badge key={idx} variant="secondary">
-                              {med.name} {med.dosage}
-                            </Badge>
-                          ))}
-                        </div>
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {rx.medications.map((med, idx) => (
+                          <span key={idx} className="text-xs bg-accent text-foreground border border-border px-2 py-0.5 rounded-full">
+                            {med.name} {med.dosage}
+                          </span>
+                        ))}
                       </div>
                     )}
+
+                    <div className="mt-3">
+                      <PrescriptionAISummary
+                        medications={rx.medications}
+                        diagnosis={rx.diagnosis}
+                        treatmentPlan={rx.treatmentPlan}
+                        followUpRecommendations={rx.followUpRecommendations}
+                      />
+                    </div>
                   </div>
 
-                  <div className="ml-4 flex flex-col gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleViewPrescription(rx)}
-                      className="whitespace-nowrap"
-                    >
-                      View Details
-                    </Button>
-                    {rx.status === "issued" && !rx.pickedUpAt && !isExpired(rx.validUntil) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handlePickupPrescription(rx._id)}
-                        className="whitespace-nowrap"
-                      >
-                        Mark Picked Up
-                      </Button>
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    <Button size="sm" className="text-xs" onClick={() => handleViewPrescription(rx)}>Details</Button>
+                    {rx.status === 'issued' && !rx.pickedUpAt && !isExpired(rx.validUntil) && (
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => handlePickupPrescription(rx._id)}>Picked Up</Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => window.print()}
-                      className="whitespace-nowrap"
-                    >
-                      <Download className="h-4 w-4 mr-1" />
-                      Download
+                    <Button size="sm" variant="ghost" className="text-xs" onClick={() => window.print()}>
+                      <Download className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -306,89 +286,64 @@ const PatientPrescriptions = () => {
       {/* Detail Modal */}
       {selectedPrescription && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="border-0 shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Prescription Details</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-border">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40 rounded-t-2xl">
+              <div>
+                <h2 className="font-bold text-lg text-foreground">Prescription Details</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Dr. {selectedPrescription.doctorId?.name}</p>
+              </div>
+              <button
+                className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center hover:bg-accent transition-colors"
                 onClick={() => setSelectedPrescription(null)}
               >
-                ✕
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Status and Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Doctor</p>
-                  <p className="font-medium">{selectedPrescription.doctorId?.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Status</p>
-                  <Badge className={getStatusColor(selectedPrescription.status)}>
-                    {selectedPrescription.status}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Issued</p>
-                  <p className="font-medium">
-                    {selectedPrescription.issuedAt
-                      ? new Date(selectedPrescription.issuedAt).toLocaleDateString()
-                      : "Not issued"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Valid Until</p>
-                  <p className="font-medium">
-                    {new Date(selectedPrescription.validUntil).toLocaleDateString()}
-                  </p>
-                </div>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Status row */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`text-xs px-3 py-1 rounded-full font-semibold capitalize flex items-center gap-1.5 ${getStatusBadgeClass(selectedPrescription.status)}`}>
+                  {getStatusIcon(selectedPrescription.status)}
+                  {selectedPrescription.status === 'picked_up' ? 'Picked Up' : selectedPrescription.status}
+                </span>
+                <span className="text-sm text-muted-foreground">Issued: {selectedPrescription.issuedAt ? new Date(selectedPrescription.issuedAt).toLocaleDateString() : '—'}</span>
+                <span className={`text-sm ${isExpired(selectedPrescription.validUntil) ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                  Valid until: {new Date(selectedPrescription.validUntil).toLocaleDateString()}
+                </span>
               </div>
 
               {/* Diagnosis */}
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Diagnosis</p>
-                <p className="font-medium">{selectedPrescription.diagnosis}</p>
+              <div className="rounded-xl bg-accent/40 border border-border px-4 py-3">
+                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide mb-1">Diagnosis</p>
+                <p className="font-semibold text-foreground">{selectedPrescription.diagnosis}</p>
               </div>
 
               {/* Clinical Notes */}
               {selectedPrescription.clinicalNotes && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Clinical Notes</p>
-                  <p className="text-sm">{selectedPrescription.clinicalNotes}</p>
+                  <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide mb-1">Clinical Notes</p>
+                  <p className="text-sm text-foreground">{selectedPrescription.clinicalNotes}</p>
                 </div>
               )}
 
               {/* Medications */}
               <div>
-                <p className="text-xs text-muted-foreground mb-2">Medications</p>
-                <div className="space-y-3">
+                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide mb-2">Medications</p>
+                <div className="space-y-2">
                   {selectedPrescription.medications.map((med, idx) => (
-                    <div key={idx} className="p-3 border rounded-lg">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Name</p>
-                          <p className="font-medium">{med.name}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Dosage</p>
-                          <p className="font-medium">{med.dosage}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Frequency</p>
-                          <p className="font-medium">{med.frequency}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Duration</p>
-                          <p className="font-medium">{med.duration}</p>
-                        </div>
+                    <div key={idx} className="rounded-xl border border-border bg-white p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Pill className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-sm">{med.name}</span>
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{med.dosage}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                        <span>Frequency: <span className="text-foreground font-medium">{med.frequency}</span></span>
+                        <span>Duration: <span className="text-foreground font-medium">{med.duration}</span></span>
                       </div>
                       {med.instructions && (
-                        <div className="mt-2">
-                          <p className="text-xs text-muted-foreground">Instructions</p>
-                          <p className="text-sm">{med.instructions}</p>
-                        </div>
+                        <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">Instructions: {med.instructions}</p>
                       )}
                     </div>
                   ))}
@@ -397,39 +352,32 @@ const PatientPrescriptions = () => {
 
               {/* Follow-up */}
               {selectedPrescription.followUpDate && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Follow-up Date</p>
-                  <p className="font-medium">
-                    {new Date(selectedPrescription.followUpDate).toLocaleDateString()}
-                  </p>
+                <div className="flex items-center gap-2 text-sm">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  <span className="text-muted-foreground">Follow-up:</span>
+                  <span className="font-medium">{new Date(selectedPrescription.followUpDate).toLocaleDateString()}</span>
                 </div>
               )}
 
-              {/* Buttons */}
-              <div className="flex gap-3 pt-4 border-t">
-                {selectedPrescription.status === "issued" &&
-                  !selectedPrescription.pickedUpAt &&
-                  !isExpired(selectedPrescription.validUntil) && (
-                    <Button onClick={() => handlePickupPrescription(selectedPrescription._id)}>
-                      Mark Picked Up
-                    </Button>
-                  )}
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    window.print();
-                    setSelectedPrescription(null);
-                  }}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Print/Download
+              <PrescriptionAISummary
+                medications={selectedPrescription.medications}
+                diagnosis={selectedPrescription.diagnosis}
+                treatmentPlan={selectedPrescription.treatmentPlan}
+                followUpRecommendations={selectedPrescription.followUpRecommendations}
+              />
+
+              {/* Action buttons */}
+              <div className="flex gap-3 pt-2 border-t border-border flex-wrap">
+                {selectedPrescription.status === 'issued' && !selectedPrescription.pickedUpAt && !isExpired(selectedPrescription.validUntil) && (
+                  <Button onClick={() => handlePickupPrescription(selectedPrescription._id)}>Mark Picked Up</Button>
+                )}
+                <Button variant="outline" onClick={() => { window.print(); setSelectedPrescription(null); }}>
+                  <Download className="h-4 w-4 mr-2" /> Print / Download
                 </Button>
-                <Button variant="outline" onClick={() => setSelectedPrescription(null)}>
-                  Close
-                </Button>
+                <Button variant="ghost" onClick={() => setSelectedPrescription(null)}>Close</Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
     </div>

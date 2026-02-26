@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClinic } from "@/contexts/ClinicContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Clock, FileText } from "lucide-react";
+import { CalendarDays, Clock, FileText, Users, UserCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const DoctorPatients = () => {
@@ -10,7 +10,7 @@ const DoctorPatients = () => {
   const { appointments, getPrescriptionByAppointment } = useClinic();
   const navigate = useNavigate();
 
-  const myAppointments = appointments.filter((a) => a.doctorId === user?.id && a.status !== "Cancelled");
+  const myAppointments = appointments.filter((a) => (a.doctorId === user?._id || a.doctorId === user?.id) && a.status !== "Cancelled");
 
   // Group by patient
   const patientMap = new Map<string, typeof myAppointments>();
@@ -31,13 +31,28 @@ const DoctorPatients = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">My Patients</h1>
-      <p className="text-muted-foreground">{patientMap.size} patient(s) with {myAppointments.length} appointment(s)</p>
+    <div className="container mx-auto px-4 py-8 space-y-6 max-w-5xl">
+      {/* Header */}
+      <div className="rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-secondary p-6 text-white shadow-xl">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Users className="h-6 w-6" /> My Patients</h1>
+            <p className="mt-1 text-white/70 text-sm">{patientMap.size} patient{patientMap.size !== 1 ? "s" : ""} · {myAppointments.length} total appointment{myAppointments.length !== 1 ? "s" : ""}</p>
+          </div>
+          <div className="bg-white/10 rounded-xl px-4 py-2 text-center">
+            <div className="text-2xl font-bold">{patientMap.size}</div>
+            <div className="text-xs text-white/70">Unique Patients</div>
+          </div>
+        </div>
+      </div>
 
       {patientMap.size === 0 && (
         <Card className="border-0 shadow-md">
-          <CardContent className="py-8 text-center text-muted-foreground">No patients yet.</CardContent>
+          <CardContent className="py-12 text-center">
+            <UserCheck className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="font-medium text-muted-foreground">No patients yet</p>
+            <p className="text-sm text-muted-foreground/60 mt-1">Patients will appear here after accepting appointments.</p>
+          </CardContent>
         </Card>
       )}
 
@@ -73,7 +88,7 @@ const DoctorPatients = () => {
                       </div>
                       <div className="flex gap-1">
                         {rx ? (
-                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => navigate(`/prescription/${apt.id}`)}>
+                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => navigate(`/prescriptions/${apt.id}`)}>
                             <FileText className="h-3 w-3 mr-1" /> Prescription
                           </Button>
                         ) : (

@@ -138,7 +138,7 @@ const Login = () => {
           <p className="text-muted-foreground">Sign in to your MediConnect account</p>
         </div>
 
-        <Card className="shadow-xl bg-white rounded-xl overflow-hidden">
+        <Card className="shadow-xl bg-card rounded-xl overflow-hidden">
           <form onSubmit={handleSubmit} noValidate>
             <CardHeader className="pb-4">
               <CardTitle className="text-lg text-foreground">Sign In</CardTitle>
@@ -202,7 +202,14 @@ const Login = () => {
                 {loading ? "Signing in..." : "Sign In"}
                 {!loading && <ArrowRight className="h-4 w-4" />}
               </Button>
-              {/* Registration link intentionally hidden on the Sign In page */}
+              <Button 
+                type="button"
+                variant="ghost" 
+                className="w-full text-primary font-semibold hover:bg-primary/10"
+                onClick={() => navigate("/forgot-password")}
+              >
+                Forgot Password?
+              </Button>
             </CardFooter>
           </form>
         </Card>

@@ -7,6 +7,13 @@ const userSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // username kept to satisfy existing unique index in MongoDB
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     // Note: username field removed per simplified requirements;
     // user identity will be handled using name/email only.
     email: {

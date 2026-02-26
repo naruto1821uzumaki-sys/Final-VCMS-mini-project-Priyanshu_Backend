@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Clock, Video, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Clock, Video, CheckCircle, XCircle, AlertTriangle, CalendarDays, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/services/api";
@@ -27,7 +27,7 @@ const DoctorTodayAppointments = () => {
 
   const today = new Date().toISOString().split("T")[0];
   const todayAppointments = appointments
-    .filter((a) => a.doctorId === user?.id && a.date === today)
+    .filter((a) => (a.doctorId === user?._id || a.doctorId === user?.id) && a.date === today)
     .sort((a, b) => a.time.localeCompare(b.time));
 
   const [rejectDialog, setRejectDialog] = useState<RejectDialogState>({
@@ -86,13 +86,27 @@ const DoctorTodayAppointments = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Today's Appointments</h1>
-      <p className="text-muted-foreground">Date: {today} • {todayAppointments.length} appointment(s)</p>
+    <div className="container mx-auto px-4 py-8 space-y-6 max-w-5xl">
+      {/* Header */}
+      <div className="rounded-2xl bg-gradient-to-r from-primary via-secondary to-teal-500 p-6 text-white shadow-xl">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><CalendarDays className="h-6 w-6" /> Today's Schedule</h1>
+            <p className="mt-1 text-white/70 text-sm">{today} · {todayAppointments.length} appointment{todayAppointments.length !== 1 ? "s" : ""} scheduled</p>
+          </div>
+          <Button variant="outline" size="sm" className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => fetchAppointments()}>
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        </div>
+      </div>
 
       {todayAppointments.length === 0 && (
         <Card className="border-0 shadow-md">
-          <CardContent className="py-8 text-center text-muted-foreground">No appointments for today.</CardContent>
+          <CardContent className="py-12 text-center">
+            <CalendarDays className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="font-medium text-muted-foreground">No appointments for today</p>
+            <p className="text-sm text-muted-foreground/60 mt-1">Enjoy your day! New bookings will appear here.</p>
+          </CardContent>
         </Card>
       )}
 
@@ -155,7 +169,7 @@ const DoctorTodayAppointments = () => {
                   </Button>
                 )}
 
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/prescription/${apt.id}`)}>
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/prescriptions/${apt.id}`)}>
                   {rx ? "View Prescription" : "View Rx"}
                 </Button>
 

@@ -16,6 +16,7 @@ export interface Appointment {
   date: string;
   time: string;
   status: "Booked" | "Accepted" | "In Progress" | "Completed" | "Cancelled";
+  symptoms?: string;
   cancelReason?: string;
   consultationFee?: number;
 }
@@ -90,8 +91,9 @@ const mapAppointmentDbToUI = (dbApt: any): Appointment => {
     date: new Date(dbApt.date).toISOString().split("T")[0],
     time: dbApt.time,
     status: mapStatusDbToUI(dbApt.status),
+    symptoms: dbApt.symptoms || '',
     consultationFee: dbApt.doctorId?.consultationFee,
-    cancelReason: dbApt.notes,
+    cancelReason: dbApt.cancellationReason || dbApt.notes || '',
   };
 };
 
@@ -125,7 +127,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Fetch appointments from backend
   const fetchAppointments = useCallback(async () => {
     try {
-      const res = await api.get('/appointments');
+      const res = await api.get('/appointments', { params: { limit: 1000 } });
       const apts = res.data.appointments || res.data.data || [];
       
       if (Array.isArray(apts)) {
@@ -141,7 +143,7 @@ export const ClinicProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Fetch prescriptions from backend
   const fetchPrescriptions = useCallback(async () => {
     try {
-      const res = await api.get('/prescriptions');
+      const res = await api.get('/prescriptions', { params: { limit: 1000 } });
       const rxs = res.data.prescriptions || res.data.data || [];
       
       if (Array.isArray(rxs)) {

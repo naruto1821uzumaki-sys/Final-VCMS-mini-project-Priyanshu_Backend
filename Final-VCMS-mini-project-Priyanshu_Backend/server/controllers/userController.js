@@ -50,7 +50,8 @@ const getDoctors = async (req, res) => {
     const { page = 1, limit = 10, specialization, search } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const filter = { role: 'doctor', isActive: true };
+    // hide any legacy placeholder entries
+    const filter = { role: 'doctor', isActive: true, email: { $not: /^placeholder_/ } };
     if (specialization) {
       filter.specialization = { $regex: specialization, $options: 'i' };
     }

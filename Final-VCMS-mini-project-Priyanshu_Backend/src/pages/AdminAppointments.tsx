@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, AlertCircle, CheckCircle2, XCircle, Bell } from "lucide-react";
+import { AlertTriangle, AlertCircle, CheckCircle2, XCircle, Bell, RefreshCw, CalendarDays } from "lucide-react";
 import api from "@/services/api";
 
 const AdminAppointments = () => {
@@ -34,25 +34,39 @@ const AdminAppointments = () => {
   });
 
   // Fetch appointments from API
+  // Map DB lowercase status to UI capitalized status
+  const mapDbStatus = (s: string): string => {
+    const map: Record<string, string> = {
+      pending: 'Booked',
+      confirmed: 'Accepted',
+      'in-progress': 'In Progress',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+    };
+    return map[s] || s;
+  };
+
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
         setLoading(true);
-        const res = await api.get('/appointments/all');
+        const res = await api.get('/admin/appointments?limit=200');
         if (res.data?.success) {
-          const appointmentsData = res.data.data?.map((apt: any) => ({
+          const appointmentsData = (res.data.appointments || []).map((apt: any) => ({
             _id: apt._id,
-            patientId: apt.patientId?.name || 'Unknown Patient',
-            doctorId: apt.doctorId?._id || '',
+            id: apt._id,
+            patientName: apt.patientId?.name || 'Unknown Patient',
+            patientId: apt.patientId?._id || apt.patientId || '',
+            doctorId: apt.doctorId?._id || apt.doctorId || '',
             doctorName: apt.doctorId?.name || 'Unknown Doctor',
             specialization: apt.doctorId?.specialization || 'N/A',
             date: apt.date || new Date().toISOString().split('T')[0],
             time: apt.time || '00:00',
-            status: apt.status || 'Booked',
+            status: mapDbStatus(apt.status || 'pending'),
             reason: apt.cancellationReason || '',
             prescriptionGiven: apt.prescriptionGiven || false,
             prescription: apt.prescriptionId,
-          })) || [];
+          }));
           setAppointments(appointmentsData);
         } else {
           console.warn("Unexpected response format");
@@ -159,14 +173,22 @@ const AdminAppointments = () => {
   return (
     <>
     <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl pb-12">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight">All Appointments Management</h1>
-        <p className="text-muted-foreground mt-2 text-lg">Manage, track, and monitor all appointments</p>
+      {/* Header */}
+      <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-6 text-white shadow-xl">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><CalendarDays className="h-6 w-6" /> All Appointments</h1>
+            <p className="mt-1 text-blue-100 text-sm">Manage, track, and monitor all appointments in the system</p>
+          </div>
+          <Button variant="outline" size="sm" className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Card>
+        <Card className="border-0 shadow-md border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-transparent">
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-xs text-gray-600 mb-1">Total</p>
@@ -174,7 +196,7 @@ const AdminAppointments = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 shadow-md border-l-4 border-l-green-500 bg-gradient-to-br from-green-50/50 to-transparent">
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-xs text-gray-600 mb-1">Completed</p>
@@ -182,7 +204,7 @@ const AdminAppointments = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 shadow-md border-l-4 border-l-red-500 bg-gradient-to-br from-red-50/50 to-transparent">
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-xs text-gray-600 mb-1">Cancelled</p>
@@ -190,15 +212,15 @@ const AdminAppointments = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 shadow-md border-l-4 border-l-sky-500 bg-gradient-to-br from-sky-50/50 to-transparent">
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-xs text-gray-600 mb-1">Pending</p>
-              <p className="text-2xl font-bold text-blue-500">{stats.pending}</p>
+              <p className="text-2xl font-bold text-sky-600">{stats.pending}</p>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 shadow-md border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-transparent">
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-xs text-gray-600 mb-1">Accepted</p>
@@ -206,11 +228,11 @@ const AdminAppointments = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 shadow-md border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/50 to-transparent">
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-xs text-gray-600 mb-1">In Progress</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.inProgress}</p>
+              <p className="text-2xl font-bold text-amber-600">{stats.inProgress}</p>
             </div>
           </CardContent>
         </Card>
@@ -304,7 +326,7 @@ const AdminAppointments = () => {
                               Warn
                             </Button>
                           )}
-                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => navigate(`/prescription/${apt.id}`)}>
+                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => navigate(`/prescriptions/${apt.id}`)}>
                             Rx
                           </Button>
                         </div>

@@ -56,14 +56,14 @@ const ViewPrescription = () => {
       try {
         const res = await api.get(`/prescriptions/${id}`);
         if (res.data?.success) {
-          data = res.data.data;
+          data = res.data.prescription || res.data.data || res.data;
         }
       } catch (err1: any) {
         // Try as appointment ID
         try {
           const res = await api.get(`/prescriptions/appointment/${id}`);
           if (res.data?.success) {
-            data = res.data.data;
+            data = res.data.prescription || res.data.data || res.data;
           }
         } catch (err2) {
           console.log("Prescription not found");

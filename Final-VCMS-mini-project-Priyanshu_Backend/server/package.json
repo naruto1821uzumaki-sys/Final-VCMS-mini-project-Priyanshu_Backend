@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed": "node seeder.js"
+    "seed": "node seeder.js",
+    "optimize:db": "node scripts/optimizeDatabase.js"
   },
   "keywords": [
     "vcms",
@@ -18,18 +19,22 @@
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
-    "cookie-parser": "^1.4.6",
     "express-mongo-sanitize": "^2.2.0",
-    "ioredis": "^5.3.2",
     "express-rate-limit": "^6.10.0",
     "express-validator": "^6.14.3",
     "helmet": "^7.1.0",
+    "ioredis": "^5.3.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.0",
+    "multer": "^2.0.2",
+    "nodemailer": "^8.0.1",
+    "openai": "^6.25.0",
     "socket.io": "^4.5.4",
+    "tesseract.js": "^7.0.0",
     "uuid": "^9.0.0",
     "xss-clean": "^0.1.1"
   },

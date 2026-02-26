@@ -7,6 +7,74 @@ import React, {
 } from "react";
 import api, { setToken } from '../services/api';
 
+// ─── Shared Types ────────────────────────────────────────────────────────────
+export type UserRole = 'admin' | 'doctor' | 'patient';
+
+export interface User {
+  _id: string;
+  id?: string; // alias — some legacy code uses .id
+  name: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  age?: number;
+  dateOfBirth?: string;
+  gender?: string;
+  address?: string;
+  specialization?: string;
+  qualifications?: string[];
+  bio?: string;
+  location?: string;
+  profileImage?: string;
+  avatar?: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected' | 'suspended';
+  accountStatus?: 'active' | 'suspended' | 'locked';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Notification {
+  _id: string;
+  id?: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'error' | 'success' | 'admin-warning';
+  isRead: boolean;
+  read?: boolean;
+  createdAt: string;
+  relatedId?: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  name: string;
+  phone: string;
+  role: 'doctor' | 'patient';
+  specialization?: string;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  users: User[];
+  notifications: Notification[];
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string; user?: User }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; message: string }>;
+  logout: () => void;
+  updateUser: (userId: string, updates: Record<string, any>) => Promise<{ success: boolean; message: string }>;
+  deleteUser: (userId: string) => Promise<{ success: boolean; message: string }>;
+  warnUser: (userId: string, message: string) => Promise<{ success: boolean; message: string }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
+  sendOtp: (email: string) => Promise<{ success: boolean; message: string }>;
+  verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; message: string }>;
+  resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
+  addNotification: (notification: Partial<Notification>) => void;
+  markNotificationRead: (notifId: string) => Promise<void>;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 
@@ -82,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteUser = useCallback(async (userId: string) => {
     try {
-      const res = await api.delete(`/users/${userId}`);
+      const res = await api.delete(`/admin/users/${userId}`);
       if (res.status === 200) {
         setUsers(prev => prev.filter(u => u._id !== userId));
         return { success: true, message: 'User deleted' };
@@ -165,7 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const markNotificationRead = useCallback(async (notifId: string) => {
     try {
-      await api.put(`/notifications/${notifId}/read`);
+      await api.post(`/notifications/${notifId}/mark-read`, {});
       setNotifications(prev => prev.map(n => n._id === notifId ? { ...n, isRead: true } : n));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -180,8 +248,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       api.get('/auth/me')
         .then(r => setUser(r.data.user))
         .catch(() => { /* ignore */ });
-      // Fetch all users only if authenticated
-      api.get('/users')
+      // Fetch all users only if authenticated (admin endpoint)
+      api.get('/admin/users')
         .then(r => {
           const userList = r.data.users || r.data;
           setUsers(Array.isArray(userList) ? userList : []);

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Search, Clock, CalendarDays, Stethoscope } from "lucide-react";
+import { MapPin, Search, Clock, CalendarDays, Stethoscope, Grid, List } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { formatLocation } from "@/utils/formatLocation";
@@ -46,23 +46,19 @@ const GuestDashboard = () => {
   const [filterLocation, setFilterLocation] = useState("");
   const [filterName, setFilterName] = useState("");
   const [showNameSuggestions, setShowNameSuggestions] = useState(false);
+  const [viewMode, setViewMode] = useState<"card" | "table">("card"); // New: toggle between card and table view
 
   // Fetch doctors and specialization list from the public API
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [doctorsRes, specsRes] = await Promise.all([
-          api.get('/public/doctors', { params: { limit: 100 } }),
+          api.get('/public/doctors', { params: { limit: 500 } }),
           api.get('/public/specializations'),
         ]);
 
-        console.debug('GuestDashboard doctorsRes', doctorsRes.data);
-        console.debug('GuestDashboard specsRes', specsRes.data);
-
         if (doctorsRes.data?.doctors) {
           setDoctors(doctorsRes.data.doctors);
-        } else {
-          console.warn('GuestDashboard: no doctors returned from /public/doctors', doctorsRes.data);
         }
 
         if (specsRes.data?.specializations) {
@@ -71,8 +67,6 @@ const GuestDashboard = () => {
             .map((s: any) => s.specialization)
             .filter(Boolean);
           setSpecializationsList(specs);
-        } else {
-          console.warn('GuestDashboard: failed to load specializations', specsRes.data);
         }
       } catch (err) {
         console.error('Error fetching public data:', err);
@@ -132,7 +126,7 @@ const GuestDashboard = () => {
         if (!locStr.includes(filterLocation.toLowerCase())) return false;
       }
       if (filterName) {
-        const name = doc.name.toLowerCase();
+        const name = (doc.name || '').toLowerCase();
         if (!name.includes(filterName.toLowerCase().replace("dr. ", ""))) return false;
       }
       return true;
@@ -261,6 +255,25 @@ const GuestDashboard = () => {
 
         {/* Doctors List */}
         <div className="grid gap-6">
+          {filteredDoctors.length > 0 && (
+            <div className="flex justify-between items-center">
+              <p className="text-foreground font-semibold">Found {filteredDoctors.length} doctor{filteredDoctors.length !== 1 ? 's' : ''}</p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setViewMode("card")}
+                  className={`gap-2 ${viewMode === "card" ? "bg-primary text-white" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
+                >
+                  <Grid className="h-4 w-4" /> Card View
+                </Button>
+                <Button
+                  onClick={() => setViewMode("table")}
+                  className={`gap-2 ${viewMode === "table" ? "bg-primary text-white" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
+                >
+                  <List className="h-4 w-4" /> Table View
+                </Button>
+              </div>
+            </div>
+          )}
           {loadingDoctors ? (
             <Card className="border-primary/20 shadow-lg">
               <CardContent className="pt-12 text-center">
@@ -292,110 +305,182 @@ const GuestDashboard = () => {
               </CardContent>
             </Card>
           ) : (
-            filteredDoctors.map((doc) => {
-              return (
-                <Card key={doc._id} className="border-primary/20 shadow-md hover:shadow-lg transition-all hover:border-primary/40 overflow-hidden">
-                  <CardContent className="py-4 px-4">
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="md:w-1/4 space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center text-xl text-primary font-semibold">
-                            {doc.name ? doc.name.charAt(0) : "D"}
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-foreground">Dr. {doc.name || 'Unknown'}</h3>
-                            <p className="text-primary font-medium mt-0.5 text-sm">{doc.specialization}</p>
-                            <div className="flex items-center gap-2 text-muted-foreground mt-1 text-sm">
-                              <MapPin className="h-4 w-4 text-primary" />
-                              <span className="font-medium">
-                                {formatLocation(doc.location) || "Location not specified"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-primary/10 border border-primary/20 rounded-lg p-2">
-                          <p className="text-xs text-muted-foreground">Consultation</p>
-                          <p className="text-lg font-bold text-primary">₹{doc.consultationFee || "N/A"}</p>
-                        </div>
-
-                        <Button
-                          onClick={() => navigate("/login")}
-                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 rounded-md transition-all"
-                        >
-                          Book
-                        </Button>
-                      </div>
-
-                      <div className="md:w-3/4 space-y-3">
-                        <div>
-                          <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2 text-base">
-                            <Stethoscope className="h-4 w-4 text-primary" />
-                            Specialization
-                          </h4>
-                          <div className="space-y-2">
-                            {doc.specialization && (
-                              <div className="inline-block bg-blue-100 text-blue-900 px-3 py-1.5 rounded-md text-sm font-semibold border border-blue-300 hover:bg-blue-50 transition-colors">
-                                {doc.specialization}
+            <>
+              {viewMode === "card" ? (
+                // CARD VIEW
+                filteredDoctors.map((doc) => {
+                  return (
+                    <Card key={doc._id} className="border-primary/20 shadow-md hover:shadow-lg transition-all hover:border-primary/40 overflow-hidden">
+                      <CardContent className="py-4 px-4">
+                        <div className="flex flex-col md:flex-row gap-4">
+                          <div className="md:w-1/4 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center text-xl text-primary font-semibold">
+                                {doc.name ? doc.name.charAt(0) : "D"}
                               </div>
-                            )}
-                            <p className="text-muted-foreground text-sm leading-relaxed">
-                              {doc.experience && `${doc.experience} years of experience`}{doc.experience && doc.specialization && ' in '}{doc.specialization && `${doc.specialization}`}.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2 text-base">
-                            <CalendarDays className="h-4 w-4 text-primary" />
-                            Availability
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {doc.availability && doc.availability.length > 0 ? (
-                              // sort by weekday order then start time
-                              [...doc.availability]
-                                .sort((a: any, b: any) => {
-                                  const ai = DAYS.indexOf(a.day);
-                                  const bi = DAYS.indexOf(b.day);
-                                  if (ai !== bi) return ai - bi;
-                                  return a.startTime.localeCompare(b.startTime);
-                                })
-                                .map((avail: any, idx: number) => (
-                                  <div key={idx} className="bg-green-100 px-3 py-2 rounded-md text-sm font-medium text-green-800 border border-green-300 hover:bg-green-200 transition-colors">
-                                    📅 <span className="font-semibold">{avail.day}</span>
-                                    <span className="text-green-600 mx-1.5">•</span>
-                                    <span className="font-mono text-xs">{avail.startTime} - {avail.endTime}</span>
-                                  </div>
-                                ))
-                            ) : (
-                              <p className="text-muted-foreground text-sm italic">No availability specified</p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2 text-base">
-                            <Clock className="h-4 w-4 text-primary" />
-                            Consultation Info
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="bg-primary/10 border border-primary/20 rounded-md p-2">
-                              <p className="text-xs text-primary font-medium mb-1">ℹ️ Important Note</p>
-                              <p className="text-xs text-primary/70 leading-relaxed">
-                                Public holidays may affect doctor availability. Verify the slot during booking or call the clinic.
-                              </p>
+                              <div>
+                                <h3 className="text-lg font-bold text-foreground">Dr. {doc.name || 'Unknown'}</h3>
+                                <p className="text-primary font-medium mt-0.5 text-sm">{doc.specialization}</p>
+                                <div className="flex items-center gap-2 text-muted-foreground mt-1 text-sm">
+                                  <MapPin className="h-4 w-4 text-primary" />
+                                  <span className="font-medium">
+                                    {formatLocation(doc.location) || "Location not specified"}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <p className="text-xs text-muted-foreground italic">
-                              Create an account to select your preferred time slot
-                            </p>
+
+                            <div className="bg-primary/10 border border-primary/20 rounded-lg p-2">
+                              <p className="text-xs text-muted-foreground">Consultation</p>
+                              <p className="text-lg font-bold text-primary">₹{doc.consultationFee || "N/A"}</p>
+                            </div>
+
+                            <Button
+                              onClick={() => navigate("/login")}
+                              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 rounded-md transition-all"
+                            >
+                              Book
+                            </Button>
+                          </div>
+
+                          <div className="md:w-3/4 space-y-3">
+                            <div>
+                              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2 text-base">
+                                <Stethoscope className="h-4 w-4 text-primary" />
+                                Specialization
+                              </h4>
+                              <div className="space-y-2">
+                                {doc.specialization && (
+                                  <div className="inline-block bg-blue-100 text-blue-900 px-3 py-1.5 rounded-md text-sm font-semibold border border-blue-300 hover:bg-blue-50 transition-colors">
+                                    {doc.specialization}
+                                  </div>
+                                )}
+                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                  {doc.experience && `${doc.experience} years of experience`}{doc.experience && doc.specialization && ' in '}{doc.specialization && `${doc.specialization}`}.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2 text-base">
+                                <CalendarDays className="h-4 w-4 text-primary" />
+                                Availability
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {doc.availability && doc.availability.length > 0 ? (
+                                  // sort by weekday order then start time
+                                  [...doc.availability]
+                                    .sort((a: any, b: any) => {
+                                      const ai = DAYS.indexOf(a.day);
+                                      const bi = DAYS.indexOf(b.day);
+                                      if (ai !== bi) return ai - bi;
+                                      return a.startTime.localeCompare(b.startTime);
+                                    })
+                                    .map((avail: any, idx: number) => (
+                                      <div key={idx} className="bg-green-100 px-3 py-2 rounded-md text-sm font-medium text-green-800 border border-green-300 hover:bg-green-200 transition-colors">
+                                        📅 <span className="font-semibold">{avail.day}</span>
+                                        <span className="text-green-600 mx-1.5">•</span>
+                                        <span className="font-mono text-xs">{avail.startTime} - {avail.endTime}</span>
+                                      </div>
+                                    ))
+                                ) : (
+                                  <p className="text-muted-foreground text-sm italic">No availability specified</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2 text-base">
+                                <Clock className="h-4 w-4 text-primary" />
+                                Consultation Info
+                              </h4>
+                              <div className="space-y-2">
+                                <div className="bg-primary/10 border border-primary/20 rounded-md p-2">
+                                  <p className="text-xs text-primary font-medium mb-1">ℹ️ Important Note</p>
+                                  <p className="text-xs text-primary/70 leading-relaxed">
+                                    Public holidays may affect doctor availability. Verify the slot during booking or call the clinic.
+                                  </p>
+                                </div>
+                                <p className="text-xs text-muted-foreground italic">
+                                  Create an account to select your preferred time slot
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              ) : (
+                // TABLE VIEW
+                <Card className="border-primary/20 shadow-lg overflow-auto">
+                  <CardContent className="pt-6 px-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b-2 border-primary/30 bg-primary/5">
+                            <th className="text-left px-4 py-3 font-semibold text-foreground">Doctor Name</th>
+                            <th className="text-left px-4 py-3 font-semibold text-foreground">Specialization</th>
+                            <th className="text-center px-4 py-3 font-semibold text-foreground">Experience</th>
+                            <th className="text-center px-4 py-3 font-semibold text-foreground">Fee</th>
+                            <th className="text-left px-4 py-3 font-semibold text-foreground">Location</th>
+                            <th className="text-center px-4 py-3 font-semibold text-foreground">Availability</th>
+                            <th className="text-center px-4 py-3 font-semibold text-foreground">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredDoctors.map((doc, idx) => (
+                            <tr key={doc._id} className={`border-b border-secondary/50 hover:bg-primary/5 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-secondary/2'}`}>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
+                                    {doc.name ? doc.name.charAt(0) : "D"}
+                                  </div>
+                                  <span className="font-medium text-foreground">Dr. {doc.name || 'Unknown'}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-semibold">
+                                  {doc.specialization || 'N/A'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center text-foreground font-medium">
+                                {doc.experience || 0} yrs
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="font-bold text-primary">₹{doc.consultationFee || 'N/A'}</span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-muted-foreground">
+                                {formatLocation(doc.location) || "Not specified"}
+                              </td>
+                              <td className="px-4 py-3 text-center text-xs">
+                                {doc.availability && doc.availability.length > 0 ? (
+                                  <span className="text-green-700 font-semibold">
+                                    {doc.availability.length} slot{doc.availability.length !== 1 ? 's' : ''}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">None</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <Button
+                                  onClick={() => navigate("/login")}
+                                  size="sm"
+                                  className="bg-primary hover:bg-primary/90 text-white font-semibold"
+                                >
+                                  Book
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })
+              )}
+            </>
           )}
         </div>
 
@@ -407,13 +492,13 @@ const GuestDashboard = () => {
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
                 onClick={() => navigate("/register")}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6"
+                className="bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold px-6"
               >
                 Create Account
               </Button>
               <Button
                 onClick={() => navigate("/login")}
-                className="bg-white hover:bg-secondary text-primary font-semibold border-2 border-primary px-6"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-6"
               >
                 Sign In
               </Button>

@@ -17,7 +17,28 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, CheckCircle, AlertCircle, Clock } from "lucide-react";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const SPECIALIZATIONS = ["Cardiology", "Dermatology", "Neurology", "Orthopedics", "Pediatrics", "Psychiatry", "General Medicine"];
+const SPECIALIZATIONS = [
+  "Cardiology",
+  "Dermatology",
+  "Endocrinology",
+  "Gastroenterology",
+  "General Medicine",
+  "General Surgery",
+  "Gynecology & Obstetrics",
+  "Hematology",
+  "Nephrology",
+  "Neurology",
+  "Oncology",
+  "Ophthalmology",
+  "Orthopedics",
+  "Otolaryngology (ENT)",
+  "Pediatrics",
+  "Psychiatry",
+  "Pulmonology",
+  "Radiology",
+  "Rheumatology",
+  "Urology",
+];
 
 const Profile = () => {
   const { user, updateUser, changePassword, sendOtp, verifyOtp, resetPassword } = useAuth();

@@ -61,7 +61,7 @@ const Index = () => {
                 Get Started <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button size="lg" className="px-8 bg-white hover:bg-secondary text-primary font-semibold border-2 border-primary shadow-md hover:shadow-lg transition-all" asChild>
+            <Button size="lg" className="px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-all" asChild>
               <Link to="/login">Sign In</Link>
             </Button>
             <Button size="lg" className="px-8 border-2 border-primary text-primary hover:bg-primary/10 font-semibold transition-all" variant="outline" asChild>

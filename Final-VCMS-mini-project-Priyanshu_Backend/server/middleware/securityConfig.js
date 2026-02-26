@@ -13,12 +13,14 @@ const corsOptions = {
       "http://localhost:3000",
       "http://localhost:5173", // Vite dev server
       "http://localhost:8080", // Vite dev server (production port)
+      "http://localhost:8081", // Vite dev server (alt port)
       "http://localhost:5000",
       process.env.FRONTEND_URL, // Production frontend
     ].filter(Boolean);
 
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Also allow any localhost port in development
+    if (!origin || allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));

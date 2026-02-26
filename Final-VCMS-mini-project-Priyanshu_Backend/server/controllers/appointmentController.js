@@ -746,24 +746,29 @@ const getAppointmentAnalytics = async (req, res) => {
     const total = appointments.length;
     const completed = appointments.filter(a => a.status === 'completed').length;
     const cancelled = appointments.filter(a => a.status === 'cancelled').length;
-    const pending = appointments.filter(a => a.status === 'pending').length;
+    const pending = appointments.filter(a => ['pending', 'confirmed'].includes(a.status)).length;
     const inProgress = appointments.filter(a => a.status === 'in-progress').length;
     
-    // Cancellation reasons breakdown
-    const cancelledByDoctor = appointments.filter(a => 
-      a.status === 'cancelled' && a.cancelledBy && 
-      a.cancelledBy.toString() !== a.patientId.toString()
+    // Cancellation breakdown — include ALL cancelled, split by cancelledBy when available
+    const cancelledAppts = appointments.filter(a => a.status === 'cancelled');
+    const cancelledByPatient = cancelledAppts.filter(a =>
+      a.cancelledBy && a.patientId &&
+      a.cancelledBy.toString() === (a.patientId?._id || a.patientId).toString()
     ).length;
-    const cancelledByPatient = appointments.filter(a => 
-      a.status === 'cancelled' && a.cancelledBy && 
-      a.cancelledBy.toString() === a.patientId.toString()
-    ).length;
+    // Doctor-cancelled OR cancelled without cancelledBy field
+    const cancelledByDoctor = cancelled - cancelledByPatient;
 
     // Monthly trends
     const lastMonths = {};
     appointments.forEach(apt => {
       const month = new Date(apt.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
       lastMonths[month] = (lastMonths[month] || 0) + 1;
+    });
+
+    // Sort monthly trends chronologically
+    const sortedMonths = {};
+    Object.keys(lastMonths).sort((a, b) => new Date(a) - new Date(b)).forEach(k => {
+      sortedMonths[k] = lastMonths[k];
     });
 
     // Status distribution
@@ -781,7 +786,7 @@ const getAppointmentAnalytics = async (req, res) => {
         statusDistribution,
         cancelledByDoctor,
         cancelledByPatient,
-        monthlyTrends: lastMonths,
+        monthlyTrends: sortedMonths,
         completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
       },
     });

@@ -90,19 +90,16 @@ const criticalOperationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Admin operations - very high limits for read operations
+// Admin operations - high limits, skip all GET reads entirely
 const adminReadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // 1000 admin read requests per 15 minutes
+  max: 5000, // very high ceiling for development
   message: {
     success: false,
     message: "Admin panel rate limit exceeded",
     code: "ADMIN_RATE_LIMIT_EXCEEDED",
   },
-  skip: (req) => {
-    // Skip rate limiting for GET requests (read operations)
-    return req.method === 'GET';
-  },
+  skip: () => true, // Skip rate limiting for admin panel entirely (dev mode)
   standardHeaders: true,
   legacyHeaders: false,
 });

@@ -1,330 +1,408 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClinic } from "@/contexts/ClinicContext";
 import { useSocket } from "@/hooks/useSocket";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, Clock, Users, IndianRupee, Stethoscope, FileText, Video, CheckCircle, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  CalendarDays, Clock, Users, IndianRupee, Stethoscope, FileText,
+  Video, CheckCircle, XCircle, TrendingUp, Activity,
+  AlertCircle, RefreshCw,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import api from "@/services/api";
 
 const DoctorDashboard = () => {
   const { user } = useAuth();
-  const { appointments, acceptAppointment, rejectAppointment, cancelAppointment, updateAppointmentStatus, addPrescription, getPrescriptionByAppointment, fetchAppointments } = useClinic();
+  const { appointments, acceptAppointment, rejectAppointment, updateAppointmentStatus, addPrescription, fetchAppointments } = useClinic();
   const { socket } = useSocket();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const myAppointments = appointments.filter((a) => a.doctorId === user?._id);
   const today = new Date().toISOString().split("T")[0];
-  const todayAppointments = myAppointments.filter((a) => a.date === today && a.status !== "Cancelled");
+  const myAppointments = appointments.filter((a) => a.doctorId === user?._id || a.doctorId === user?.id);
+
+  const pendingAppointments = myAppointments.filter((a) => a.status === "Booked");
+  const todayAppointments = myAppointments.filter((a) => a.date === today && !["Cancelled", "Completed"].includes(a.status));
+  const upcomingAppointments = myAppointments.filter((a) => a.date > today && ["Accepted", "Booked"].includes(a.status));
+  const completedAppointments = myAppointments.filter((a) => a.status === "Completed");
   const uniquePatients = new Set(myAppointments.filter((a) => a.status !== "Cancelled").map((a) => a.patientId)).size;
+  const estimatedEarnings = completedAppointments.length * (user?.consultationFee || 0);
 
   // Reject state
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  // Notification badge
+  const [unreadCount, setUnreadCount] = useState(0);
+  // Pulse animation for new pending
+  const [newPending, setNewPending] = useState(false);
 
-  // Prescription form state
-  const [rxAppointmentId, setRxAppointmentId] = useState<string | null>(null);
-  const [rxForm, setRxForm] = useState({ medicineName: "", dosage: "", duration: "", instructions: "" });
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await api.get("/notifications/unread-count");
+      setUnreadCount(res.data?.unreadCount ?? 0);
+    } catch {/* ignore */}
+  }, []);
 
-  // Pagination
-  const [visibleCount, setVisibleCount] = useState(10);
+  useEffect(() => { fetchUnreadCount(); }, [fetchUnreadCount]);
 
-  // Socket listeners for real-time updates
+  // Socket: real-time events
   useEffect(() => {
     if (!socket) return;
 
-    const handleAppointmentAccepted = (data: any) => {
+    const onNewAppointment = (data: any) => {
       if (data.doctorId === user?._id) {
-        toast({ title: "Appointment accepted by patient", description: "Check your appointments." });
+        setNewPending(true);
+        setTimeout(() => setNewPending(false), 5000);
+        toast({ title: "🔔 New Appointment Request!", description: `From ${data.patientName || "a patient"}` });
+        fetchAppointments();
+        fetchUnreadCount();
+      }
+    };
+
+    const onCancelled = (data: any) => {
+      if (data.doctorId === user?._id) {
+        toast({ title: "Appointment Cancelled", description: data.reason || "Patient cancelled their appointment." });
         fetchAppointments();
       }
     };
 
-    const handleAppointmentRejected = (data: any) => {
-      if (data.doctorId === user?._id) {
-        toast({ title: "Appointment rejected", description: "Patient has rejected this appointment." });
-        fetchAppointments();
-      }
+    const onWarning = (data: any) => {
+      toast({ title: "⚠️ Admin Warning", description: data.message || "You received a warning from admin.", variant: "destructive" });
+      fetchUnreadCount();
     };
 
-    const handleAppointmentCancelled = (data: any) => {
-      if (data.doctorId === user?._id) {
-        toast({ title: "Appointment cancelled", description: `Reason: ${data.reason || "No reason provided"}` });
-        fetchAppointments();
-      }
-    };
-
-    socket.on("appointment:accepted", handleAppointmentAccepted);
-    socket.on("appointment:rejected", handleAppointmentRejected);
-    socket.on("appointment:cancelled", handleAppointmentCancelled);
+    socket.on("appointment:created", onNewAppointment);
+    socket.on("appointment:booked", onNewAppointment);
+    socket.on("appointment:cancelled", onCancelled);
+    socket.on("notification:warning", onWarning);
+    socket.on("admin:warning", onWarning);
 
     return () => {
-      socket.off("appointment:accepted", handleAppointmentAccepted);
-      socket.off("appointment:rejected", handleAppointmentRejected);
-      socket.off("appointment:cancelled", handleAppointmentCancelled);
+      socket.off("appointment:created", onNewAppointment);
+      socket.off("appointment:booked", onNewAppointment);
+      socket.off("appointment:cancelled", onCancelled);
+      socket.off("notification:warning", onWarning);
+      socket.off("admin:warning", onWarning);
     };
-  }, [socket, user?._id, fetchAppointments, toast]);
+  }, [socket, user?._id, fetchAppointments, fetchUnreadCount, toast]);
 
   const handleReject = async (id: string) => {
-    if (!rejectReason.trim()) {
-      toast({ title: "Please provide a reason", variant: "destructive" });
-      return;
-    }
+    if (!rejectReason.trim()) { toast({ title: "Please provide a reason", variant: "destructive" }); return; }
     const result = await rejectAppointment(id, rejectReason);
-    if (result.success) {
-      toast({ title: "Appointment rejected", description: result.message });
-      setRejectId(null);
-      setRejectReason("");
-    } else {
-      toast({ title: "Rejection failed", description: result.message, variant: "destructive" });
-    }
+    if (result.success) { toast({ title: "Appointment Rejected" }); setRejectId(null); setRejectReason(""); }
+    else toast({ title: "Rejection failed", description: result.message, variant: "destructive" });
+  };
+
+  const handleAccept = async (id: string) => {
+    const result = await acceptAppointment(id);
+    if (result.success) toast({ title: "✅ Appointment Accepted", description: "Patient has been notified." });
+    else toast({ title: "Accept failed", description: result.message, variant: "destructive" });
   };
 
   const handleMarkCompleted = async (aptId: string) => {
-    const result = await updateAppointmentStatus(aptId, "completed");
-    if (result.success) {
-      toast({ title: "Appointment marked as completed", description: result.message });
-      setRxAppointmentId(aptId);
+    try {
+      await updateAppointmentStatus(aptId, "Completed");
+      toast({ title: "✅ Marked as Completed", description: "You can now write a prescription." });
+    } catch {
+      toast({ title: "Failed to update status", variant: "destructive" });
     }
   };
 
   const handleStartConsultation = async (aptId: string) => {
-    const result = await updateAppointmentStatus(aptId, "in-progress");
-    if (result.success) {
-      toast({ title: "Consultation started", description: result.message });
+    try {
+      await updateAppointmentStatus(aptId, "In Progress");
       navigate(`/video/${aptId}`);
+    } catch {
+      toast({ title: "Failed to start consultation", variant: "destructive" });
     }
   };
 
-  const handleSavePrescription = async () => {
-    const apt = myAppointments.find((a) => a._id === rxAppointmentId);
-    if (!apt || !user) return;
-
-    const result = await addPrescription({
-      appointmentId: apt._id,
-      doctorId: user._id,
-      doctorName: `Dr. ${user.name}`,
-      patientId: apt.patientId,
-      patientName: apt.patientName,
-      date: new Date().toISOString().split("T")[0],
-      medications: [{
-        name: rxForm.medicineName,
-        dosage: rxForm.dosage,
-        duration: rxForm.duration,
-        instructions: rxForm.instructions,
-      }],
-    });
-
-    if (result.success) {
-      toast({ title: "Prescription saved", description: result.message });
-      setRxAppointmentId(null);
-      setRxForm({ medicineName: "", dosage: "", duration: "", instructions: "" });
-    } else {
-      toast({ title: "Save failed", description: result.message, variant: "destructive" });
-    }
-  };
-
-  const statusColor = (s: string) => {
-    switch (s.toLowerCase()) {
-      case "booked": return "bg-primary/10 text-primary";
-      case "accepted": return "bg-secondary/10 text-secondary";
-      case "in progress": return "bg-warning/10 text-warning";
-      case "in-progress": return "bg-warning/10 text-warning";
-      case "completed": return "bg-secondary/10 text-secondary";
-      case "cancelled": return "bg-destructive/10 text-destructive";
-      default: return "bg-muted text-muted-foreground";
-    }
-  };
-
-  const sortedAppointments = [...myAppointments]
-    .sort((a, b) => {
-      if (a.date === today && b.date !== today) return -1;
-      if (b.date === today && a.date !== today) return 1;
-      return b.date.localeCompare(a.date) || b.time.localeCompare(a.time);
-    });
-
-  const canJoinVideo = (apt: typeof myAppointments[0]) => {
-    const aptStatus = apt.status.toLowerCase();
-    return (aptStatus === "accepted" || aptStatus === "in-progress" || aptStatus === "in progress") && apt.date <= today;
+  const statusBadge = (status: string) => {
+    const map: Record<string, string> = {
+      Booked: "bg-blue-100 text-blue-800",
+      Accepted: "bg-green-100 text-green-800",
+      "In Progress": "bg-orange-100 text-orange-800",
+      Completed: "bg-emerald-100 text-emerald-800",
+      Cancelled: "bg-red-100 text-red-800",
+    };
+    return map[status] || "bg-gray-100 text-gray-700";
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Doctor Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Welcome, Dr. {user?.name?.split(' ')[1] || user?.name?.split(' ')[0]}. Here's your schedule overview.</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-900 dark:to-slate-800">
+      <div className="container mx-auto px-4 py-8 space-y-8">
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-0 shadow-md cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/doctor/today")}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Appointments</CardTitle>
-            <CalendarDays className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{todayAppointments.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Click to view →</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-md cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/doctor/patients")}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Patients</CardTitle>
-            <Users className="h-5 w-5 text-secondary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{uniquePatients}</div>
-            <p className="text-xs text-muted-foreground mt-1">Click to view →</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-md cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/profile")}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Specialization</CardTitle>
-            <Stethoscope className="h-5 w-5 text-accent-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold">{user?.specialization || "—"}</div>
-            <p className="text-xs text-muted-foreground mt-1">Click to edit →</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-md cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/profile")}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Consultation Fee</CardTitle>
-            <IndianRupee className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">₹{user?.consultationFee || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Click to edit →</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Appointments */}
-      <Card className="border-0 shadow-md">
-        <CardHeader>
-          <CardTitle>Appointments</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {sortedAppointments.length === 0 && <p className="text-sm text-muted-foreground">No appointments.</p>}
-          {sortedAppointments.slice(0, visibleCount).map((apt) => {
-            const rx = getPrescriptionByAppointment(apt._id);
-            const isToday = apt.date === today;
-            const aptStatus = apt.status.toLowerCase();
-            return (
-              <div key={apt._id} className={`rounded-lg bg-muted/50 p-4 space-y-3 ${isToday ? "ring-1 ring-primary/20" : ""}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                      {apt.patientName.split(" ").map((n) => n[0]).join("")}
-                    </div>
-                    <div>
-                      <p className="font-medium">{apt.patientName}</p>
-                      <p className="text-xs text-muted-foreground">Age: {apt.patientAge || "—"} • {apt.patientMedicalHistory || "No history"}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <CalendarDays className="h-3 w-3" />{apt.date} {isToday && <span className="text-primary font-semibold">(Today)</span>}
-                        <Clock className="h-3 w-3 ml-1" />{apt.time}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${statusColor(apt.status)}`}>{apt.status}</span>
-                    <span className={`text-[11px] ${rx ? "text-secondary font-semibold" : "text-muted-foreground"}`}>
-                      Rx: {rx ? "Given" : "Not Given"}
-                    </span>
-                  </div>
-                </div>
-
-                {(aptStatus === "booked" || aptStatus === "pending") && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" onClick={() => acceptAppointment(apt._id)} className="gap-1">
-                      <CheckCircle className="h-3 w-3" /> Accept
-                    </Button>
-                    {rejectId === apt._id ? (
-                      <div className="flex gap-2 items-end flex-1">
-                        <Input
-                          placeholder="Reason for rejection (patient will be refunded)"
-                          value={rejectReason}
-                          onChange={(e) => setRejectReason(e.target.value)}
-                          className="text-sm"
-                        />
-                        <Button size="sm" variant="destructive" onClick={() => handleReject(apt._id)}>Send</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setRejectId(null)}>Cancel</Button>
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="outline" className="text-destructive" onClick={() => setRejectId(apt._id)}>
-                        <XCircle className="h-3 w-3 mr-1" /> Reject
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {canJoinVideo(apt) && (aptStatus === "accepted" || aptStatus === "confirmed") && (
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleStartConsultation(apt._id)} className="gap-1">
-                      <Video className="h-3 w-3" /> Start Consultation
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleMarkCompleted(apt._id)}>Mark Completed</Button>
-                  </div>
-                )}
-
-                {(aptStatus === "in progress" || aptStatus === "in-progress") && (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/video/${apt._id}`)} className="gap-1">
-                      <Video className="h-3 w-3" /> Rejoin Video
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleMarkCompleted(apt._id)}>Mark Completed</Button>
-                  </div>
-                )}
-
-                {aptStatus === "completed" && !rx && (
-                  <Button size="sm" variant="outline" onClick={() => setRxAppointmentId(apt._id)}>
-                    <FileText className="mr-1 h-3 w-3" /> Add Prescription
-                  </Button>
-                )}
-
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/prescription/${apt._id}`)}>
-                  {rx ? "View Prescription" : "View Rx"}
-                </Button>
-
-                {aptStatus === "cancelled" && apt.cancelReason && (
-                  <p className="text-xs text-destructive">Reason: {apt.cancelReason}</p>
-                )}
-              </div>
-            );
-          })}
-          {sortedAppointments.length > visibleCount && (
-            <Button variant="ghost" className="w-full" onClick={() => setVisibleCount((c) => c + 10)}>
-              Show More ({sortedAppointments.length - visibleCount} remaining)
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Prescription Form */}
-      {rxAppointmentId && (
-        <Card className="border-0 shadow-md">
-          <CardHeader>
-            <CardTitle>Write Prescription</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              For: {myAppointments.find((a) => a._id === rxAppointmentId)?.patientName}
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Doctor Dashboard
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Welcome back, <span className="font-semibold text-foreground">Dr. {user?.name}</span> — {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Input placeholder="Medicine Name" value={rxForm.medicineName} onChange={(e) => setRxForm((p) => ({ ...p, medicineName: e.target.value }))} />
-            <Input placeholder="Dosage (e.g. 10mg)" value={rxForm.dosage} onChange={(e) => setRxForm((p) => ({ ...p, dosage: e.target.value }))} />
-            <Input placeholder="Duration (e.g. 7 days)" value={rxForm.duration} onChange={(e) => setRxForm((p) => ({ ...p, duration: e.target.value }))} />
-            <Textarea placeholder="Instructions" value={rxForm.instructions} onChange={(e) => setRxForm((p) => ({ ...p, instructions: e.target.value }))} />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSavePrescription} disabled={!rxForm.medicineName}>Save Prescription</Button>
-              <Button size="sm" variant="ghost" onClick={() => setRxAppointmentId(null)}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => { fetchAppointments(); fetchUnreadCount(); toast({ title: "Refreshed!" }); }}
+            >
+              <RefreshCw className="h-4 w-4" /> Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* ─── Stat Cards ─── */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Today */}
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
+            onClick={() => navigate("/doctor/today")}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-3">
+                <CalendarDays className="h-8 w-8 opacity-80" />
+                <span className="text-sm font-medium opacity-80">Today</span>
+              </div>
+              <div className="text-4xl font-bold">{todayAppointments.length}</div>
+              <p className="text-sm mt-1 opacity-80">Appointments scheduled</p>
+            </CardContent>
+          </Card>
+
+          {/* Pending — pulse when new */}
+          <Card
+            className={`border-0 shadow-lg bg-gradient-to-br from-orange-400 to-orange-500 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all ${newPending ? "ring-4 ring-orange-300 animate-pulse" : ""}`}
+            onClick={() => document.getElementById("pending-section")?.scrollIntoView({ behavior: "smooth" })}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-3">
+                <AlertCircle className="h-8 w-8 opacity-80" />
+                <span className="text-sm font-medium opacity-80">Pending</span>
+              </div>
+              <div className="text-4xl font-bold">{pendingAppointments.length}</div>
+              <p className="text-sm mt-1 opacity-80">Requests awaiting decision</p>
+            </CardContent>
+          </Card>
+
+          {/* Total Patients */}
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
+            onClick={() => navigate("/doctor/patients")}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-3">
+                <Users className="h-8 w-8 opacity-80" />
+                <span className="text-sm font-medium opacity-80">Patients</span>
+              </div>
+              <div className="text-4xl font-bold">{uniquePatients}</div>
+              <p className="text-sm mt-1 opacity-80">Total unique patients</p>
+            </CardContent>
+          </Card>
+
+          {/* Estimated Earnings */}
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
+            onClick={() => navigate("/profile")}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-3">
+                <IndianRupee className="h-8 w-8 opacity-80" />
+                <span className="text-sm font-medium opacity-80">Earnings</span>
+              </div>
+              <div className="text-4xl font-bold">₹{estimatedEarnings.toLocaleString("en-IN")}</div>
+              <p className="text-sm mt-1 opacity-80">{completedAppointments.length} completed × ₹{user?.consultationFee || 0}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+
+        {/* ─── Pending Requests ─── */}
+        <div id="pending-section">
+          <Card className={`border-0 shadow-lg ${pendingAppointments.length > 0 ? "ring-2 ring-orange-200" : ""}`}>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                Pending Requests
+                {pendingAppointments.length > 0 && (
+                  <Badge className="bg-orange-500 text-white">{pendingAppointments.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pendingAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No pending requests. Great job! 🎉</p>
+              ) : (
+                <div className="space-y-3">
+                  {pendingAppointments.map((apt) => (
+                    <div key={apt._id} className="rounded-xl border border-orange-100 bg-orange-50/50 dark:bg-orange-900/10 p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white font-bold text-sm">
+                            {(apt.patientName || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold">{apt.patientName}</p>
+                            <p className="text-xs text-muted-foreground">{apt.symptoms || "General consultation"}</p>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{apt.date}</span>
+                              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{apt.time}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Badge className="bg-blue-100 text-blue-800 shrink-0">New Request</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1" onClick={() => handleAccept(apt._id)}>
+                          <CheckCircle className="h-3.5 w-3.5" /> Accept
+                        </Button>
+                        {rejectId === apt._id ? (
+                          <div className="flex gap-2 flex-1 min-w-0">
+                            <Input
+                              className="text-sm h-8"
+                              placeholder="Reason for rejection..."
+                              value={rejectReason}
+                              onChange={(e) => setRejectReason(e.target.value)}
+                            />
+                            <Button size="sm" variant="destructive" className="h-8 shrink-0" onClick={() => handleReject(apt._id)}>Send</Button>
+                            <Button size="sm" variant="ghost" className="h-8 shrink-0" onClick={() => { setRejectId(null); setRejectReason(""); }}>✕</Button>
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 gap-1" onClick={() => setRejectId(apt._id)}>
+                            <XCircle className="h-3.5 w-3.5" /> Reject
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ─── Today's Schedule ─── */}
+        <div id="today-section">
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-blue-500" />
+                Today's Schedule
+                <Badge variant="secondary">{todayAppointments.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {todayAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No appointments today. Enjoy your day! ☀️</p>
+              ) : (
+                <div className="space-y-3">
+                  {[...todayAppointments].sort((a, b) => a.time.localeCompare(b.time)).map((apt) => {
+                    const s = apt.status;
+                    return (
+                      <div key={apt._id} className="flex items-center justify-between rounded-xl border bg-card p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-4">
+                          <div className="text-center min-w-[52px] rounded-lg bg-blue-50 dark:bg-blue-900/20 p-2">
+                            <p className="text-xs text-blue-500 font-medium">TIME</p>
+                            <p className="font-bold text-sm text-blue-700 dark:text-blue-300">{apt.time}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold">{apt.patientName}</p>
+                            <p className="text-xs text-muted-foreground">{apt.symptoms || "Consultation"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-semibold rounded-full px-2.5 py-1 ${statusBadge(apt.status)}`}>{apt.status}</span>
+                          {s === "Accepted" && (
+                            <Button size="sm" className="gap-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleStartConsultation(apt._id)}>
+                              <Video className="h-3.5 w-3.5" /> Start Video
+                            </Button>
+                          )}
+                          {s === "In Progress" && (
+                            <Button size="sm" variant="outline" className="gap-1 border-green-400 text-green-700" onClick={() => handleMarkCompleted(apt._id)}>
+                              <CheckCircle className="h-3.5 w-3.5" /> Complete
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ─── Upcoming Appointments ─── */}
+        {upcomingAppointments.length > 0 && (
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-violet-500" />
+                Upcoming Appointments
+                <Badge variant="secondary">{upcomingAppointments.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {upcomingAppointments.slice(0, 5).map((apt) => (
+                  <div key={apt._id} className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700 font-bold text-xs">
+                        {(apt.patientName || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{apt.patientName}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CalendarDays className="h-3 w-3" />{apt.date}
+                          <Clock className="h-3 w-3 ml-1" />{apt.time}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`text-xs font-semibold rounded-full px-2.5 py-1 ${statusBadge(apt.status)}`}>{apt.status}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ─── Recent Consultations ─── */}
+        {completedAppointments.length > 0 && (
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <Stethoscope className="h-5 w-5 text-emerald-500" />
+                Recent Consultations
+                <Badge variant="secondary">{completedAppointments.length} completed</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {[...completedAppointments].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((apt) => (
+                  <div key={apt._id} className="flex items-center justify-between rounded-lg border bg-emerald-50/50 dark:bg-emerald-900/10 p-3">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">{apt.patientName}</p>
+                        <p className="text-xs text-muted-foreground">{apt.date} • {apt.time}</p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                      onClick={() => navigate(`/create-prescription/${apt._id}`)}
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Write Prescription
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+
+      </div>
     </div>
   );
 };

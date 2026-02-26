@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSocket } from "@/hooks/useSocket";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/services/api";
-import { Bell, CheckCircle2, Trash2, Eye, AlertCircle, Cross } from "lucide-react";
+import { Bell, CheckCircle2, Trash2, Eye, AlertCircle, Calendar, Pill, ClipboardList, UserCheck, Settings } from "lucide-react";
 
 interface Notification {
   _id: string;
@@ -22,6 +20,14 @@ interface Notification {
   data?: Record<string, any>;
 }
 
+const TYPE_CONFIG: Record<string, { label: string; icon: any; bg: string; text: string; border: string }> = {
+  appointment:      { label: "Appointment",     icon: Calendar,      bg: "bg-primary/10",    text: "text-primary",     border: "border-primary/30" },
+  prescription:     { label: "Prescription",    icon: Pill,          bg: "bg-secondary/10",  text: "text-secondary",   border: "border-secondary/30" },
+  "medical-history":{ label: "Medical History", icon: ClipboardList, bg: "bg-violet-50",     text: "text-violet-600",  border: "border-violet-200" },
+  "doctor-approval":{ label: "Doctor Approval", icon: UserCheck,     bg: "bg-amber-50",      text: "text-amber-600",   border: "border-amber-200" },
+  system:           { label: "System",          icon: Settings,      bg: "bg-gray-100",       text: "text-gray-600",    border: "border-gray-200" },
+};
+
 const Notifications = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
@@ -32,13 +38,13 @@ const Notifications = () => {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [page, setPage] = useState(1);
 
-  const notificationTypes = [
-    "all",
-    "appointment",
-    "prescription",
-    "medical-history",
-    "doctor-approval",
-    "system",
+  const filterTabs = [
+    { key: "all", label: "All" },
+    { key: "appointment", label: "Appointments" },
+    { key: "prescription", label: "Prescriptions" },
+    { key: "medical-history", label: "Medical" },
+    { key: "doctor-approval", label: "Approvals" },
+    { key: "system", label: "System" },
   ];
 
   useEffect(() => {
@@ -48,21 +54,15 @@ const Notifications = () => {
     }
   }, [user, selectedType, page]);
 
-  // Socket listener for real-time notifications
   useEffect(() => {
     if (!socket || !user?._id) return;
-
     const handleNewNotification = (data: any) => {
       if (data.userId === user._id || data.toUserId === user._id) {
         setNotifications((prev) => [data, ...prev]);
         setUnreadCount((prev) => prev + 1);
-        toast({
-          title: data.title || "New Notification",
-          description: data.message,
-        });
+        toast({ title: data.title || "New Notification", description: data.message });
       }
     };
-
     socket.on("notification", handleNewNotification);
     return () => socket.off("notification", handleNewNotification);
   }, [socket, user?._id, toast]);
@@ -70,20 +70,12 @@ const Notifications = () => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      let url = `/api/notifications?page=${page}&limit=15`;
-      if (selectedType !== "all") {
-        url += `&type=${selectedType}`;
-      }
+      let url = `/notifications?page=${page}&limit=15`;
+      if (selectedType !== "all") url += `&type=${selectedType}`;
       const response = await api.get(url);
-      if (response.data?.success) {
-        setNotifications(response.data.notifications || []);
-      }
+      if (response.data?.success) setNotifications(response.data.notifications || []);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error?.response?.data?.message || "Failed to load notifications",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error?.response?.data?.message || "Failed to load notifications", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -91,260 +83,191 @@ const Notifications = () => {
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await api.get("/api/notifications/unread-count");
-      if (response.data?.success) {
-        setUnreadCount(response.data.unreadCount || 0);
-      }
-    } catch (error) {
-      console.error("Failed to fetch unread count", error);
-    }
+      const response = await api.get("/notifications/unread-count");
+      if (response.data?.success) setUnreadCount(response.data.unreadCount || 0);
+    } catch { /* silent */ }
   };
 
-  const handleMarkAsRead = async (notificationId: string) => {
+  const handleMarkAsRead = async (id: string) => {
     try {
-      await api.post(`/api/notifications/${notificationId}/mark-read`);
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n._id === notificationId ? { ...n, isRead: true } : n
-        )
-      );
+      await api.post(`/notifications/${id}/mark-read`);
+      setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, isRead: true } : n));
       fetchUnreadCount();
-      toast({ title: "Success", description: "Marked as read" });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error?.response?.data?.message || "Failed to mark as read",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to mark as read", variant: "destructive" });
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      await api.post("/api/notifications/mark-all-read");
+      await api.post("/notifications/mark-all-read");
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
-      toast({ title: "Success", description: "All marked as read" });
+      toast({ title: "Done", description: "All marked as read" });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description:
-          error?.response?.data?.message || "Failed to mark all as read",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to mark all as read", variant: "destructive" });
     }
   };
 
-  const handleDelete = async (notificationId: string) => {
+  const handleDelete = async (id: string) => {
     try {
-      await api.delete(`/api/notifications/${notificationId}`);
-      setNotifications((prev) => prev.filter((n) => n._id !== notificationId));
-      toast({ title: "Success", description: "Notification deleted" });
+      await api.delete(`/notifications/${id}`);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description:
-          error?.response?.data?.message || "Failed to delete notification",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
     }
   };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "appointment":
-        return "bg-blue-100 text-blue-800";
-      case "prescription":
-        return "bg-green-100 text-green-800";
-      case "medical-history":
-        return "bg-purple-100 text-purple-800";
-      case "doctor-approval":
-        return "bg-yellow-100 text-yellow-800";
-      case "admin-warning":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getPriorityIcon = (priority: string) => {
-    if (priority === "urgent" || priority === "high") {
-      return <AlertCircle className="h-4 w-4 text-red-500" />;
-    }
-    return null;
-  };
-
-  if (loading && notifications.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-20 bg-muted rounded"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
+    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5 p-3 md:p-5 space-y-3">
+
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-5 py-4 shadow-lg border border-primary/20">
+        <div className="absolute -top-4 -right-4 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-8 -left-4 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Bell className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white leading-tight">Notifications</h1>
+              <p className="text-white/70 text-xs mt-0.5">
+                {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}` : "You're all caught up"}
+              </p>
+            </div>
+          </div>
           {unreadCount > 0 && (
-            <p className="text-muted-foreground">
-              {unreadCount} unread notification(s)
-            </p>
+            <button
+              onClick={handleMarkAllAsRead}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-lg transition-colors border border-white/20"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Mark all read
+            </button>
           )}
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={handleMarkAllAsRead}>
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Mark All Read
-          </Button>
-        )}
       </div>
 
-      {/* Type Filter */}
-      <div className="flex gap-2 flex-wrap">
-        {notificationTypes.map((type) => (
-          <Button
-            key={type}
-            variant={selectedType === type ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setSelectedType(type);
-              setPage(1);
-            }}
-            className="capitalize"
-          >
-            {type}
-          </Button>
-        ))}
-      </div>
-
-      {/* Notifications List */}
-      {notifications.length === 0 ? (
-        <Card className="border-0 shadow-md">
-          <CardContent className="py-12 text-center">
-            <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground">
-              No notifications yet. You're all caught up!
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {notifications.map((notif) => (
-            <Card
-              key={notif._id}
-              className={`border-0 shadow-md ${
-                !notif.isRead ? "ring-2 ring-blue-200 bg-blue-50/50" : ""
+      {/* Filter tabs */}
+      <div className="rounded-2xl border border-border bg-white shadow-sm overflow-hidden">
+        <div className="flex overflow-x-auto scrollbar-hide border-b border-border">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { setSelectedType(tab.key); setPage(1); }}
+              className={`flex-shrink-0 px-4 py-3 text-sm font-semibold transition-all border-b-2 -mb-px ${
+                selectedType === tab.key
+                  ? "border-primary text-primary bg-primary/5"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
               }`}
             >
-              <CardContent className="py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <Badge className={getTypeColor(notif.type)}>
-                        {notif.type}
-                      </Badge>
-                      {notif.priority && notif.priority !== "normal" && (
-                        <div className="flex items-center gap-1">
-                          {getPriorityIcon(notif.priority)}
-                          <span className="text-xs capitalize text-muted-foreground">
-                            {notif.priority}
-                          </span>
-                        </div>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(notif.createdAt).toLocaleDateString()}{" "}
-                        {new Date(notif.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+              {tab.label}
+              {tab.key === "all" && unreadCount > 0 && (
+                <span className="ml-1.5 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* List */}
+        {loading ? (
+          <div className="p-4 space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="animate-pulse flex gap-3 p-3">
+                <div className="h-10 w-10 rounded-xl bg-muted flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-muted rounded w-1/3" />
+                  <div className="h-3 bg-muted rounded w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+              <Bell className="h-8 w-8 text-muted-foreground/40" />
+            </div>
+            <p className="font-semibold text-foreground">No notifications</p>
+            <p className="text-sm text-muted-foreground mt-1">You're all caught up!</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {notifications.map((notif) => {
+              const cfg = TYPE_CONFIG[notif.type] || TYPE_CONFIG.system;
+              const Icon = cfg.icon;
+              const isUrgent = notif.priority === "urgent" || notif.priority === "high";
+              return (
+                <div
+                  key={notif._id}
+                  className={`flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-muted/30 ${!notif.isRead ? "bg-primary/3" : ""}`}
+                >
+                  {/* Icon */}
+                  <div className={`flex-shrink-0 h-10 w-10 rounded-xl ${cfg.bg} flex items-center justify-center`}>
+                    <Icon className={`h-5 w-5 ${cfg.text}`} />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                        {cfg.label}
                       </span>
-                      {notif.isRead && (
-                        <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto" />
+                      {isUrgent && (
+                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-red-600">
+                          <AlertCircle className="h-3 w-3" /> Urgent
+                        </span>
                       )}
+                      {!notif.isRead && (
+                        <span className="h-2 w-2 bg-primary rounded-full" />
+                      )}
+                      <span className="text-[10px] text-muted-foreground ml-auto">
+                        {new Date(notif.createdAt).toLocaleDateString()} · {new Date(notif.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
-
-                    {/* Title */}
-                    <h3 className="font-semibold mb-1">{notif.title}</h3>
-
-                    {/* Message */}
-                    <p className="text-sm text-muted-foreground">
-                      {notif.message}
-                    </p>
-
-                    {/* From */}
+                    <p className="text-sm font-semibold text-foreground leading-snug">{notif.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{notif.message}</p>
                     {notif.from && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        From: <span className="font-medium">{notif.from.name}</span>
-                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-1">From: <span className="font-semibold">{notif.from.name}</span></p>
                     )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2 flex-col">
+                  <div className="flex-shrink-0 flex items-center gap-1">
                     {!notif.isRead && (
-                      <Button
-                        size="sm"
-                        variant="outline"
+                      <button
                         onClick={() => handleMarkAsRead(notif._id)}
-                        className="whitespace-nowrap"
+                        title="Mark as read"
+                        className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Mark Read
-                      </Button>
+                        <Eye className="h-4 w-4" />
+                      </button>
                     )}
-                    {notif.link && (
-                      <a href={notif.link}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="whitespace-nowrap"
-                        >
-                          View
-                        </Button>
-                      </a>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                    <button
                       onClick={() => handleDelete(notif._id)}
-                      className="text-red-600 hover:text-red-700"
+                      title="Delete"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
 
-      {/* Pagination */}
-      {notifications.length > 0 && (
-        <div className="flex gap-2 justify-center mt-6">
-          <Button
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => setPage(page - 1)}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setPage(page + 1)}
-            disabled={notifications.length < 15}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+        {/* Pagination */}
+        {notifications.length > 0 && (
+          <div className="flex gap-2 justify-center px-4 py-3 border-t border-border">
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={notifications.length < 15}>
+              Next
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

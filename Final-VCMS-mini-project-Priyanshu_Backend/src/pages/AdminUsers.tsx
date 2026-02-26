@@ -12,13 +12,24 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, CheckCircle, XCircle } from "lucide-react";
+import { Search, CheckCircle, XCircle, Users, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "react-router-dom";
 import api from "@/services/api";
 
+// Helper to format location
+const formatLocation = (loc: any): string => {
+  if (!loc) return "";
+  if (typeof loc === "string") return loc;
+  if (typeof loc === "object") {
+    const parts = [loc.city, loc.state, loc.country].filter(Boolean);
+    return parts.join(", ") || "";
+  }
+  return "";
+};
+
 const AdminUsers = () => {
-  const { users, deleteUser, warnUser } = useAuth();
+  const { users: contextUsers, deleteUser, warnUser } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "all";
@@ -28,6 +39,20 @@ const AdminUsers = () => {
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [warningUser, setWarningUser] = useState<User | null>(null);
   const [warningMessage, setWarningMessage] = useState("");
+  const [localUsers, setLocalUsers] = useState<User[]>([]);
+
+  // Use localUsers if fetched, else fall back to context users
+  const users = localUsers.length > 0 ? localUsers : contextUsers;
+
+  // Always fetch from admin/users for admin pages (high limit to get all)
+  useEffect(() => {
+    api.get('/admin/users', { params: { limit: 1000 } })
+      .then(r => {
+        const list = r.data.users || r.data;
+        setLocalUsers(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {/* silent fallback to context users */});
+  }, []);
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -70,11 +95,17 @@ const AdminUsers = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl pb-12">
-      {/* Main Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">Manage Users</h1>
-        <p className="text-muted-foreground mt-2 text-lg">View and manage all registered users in the system.</p>
-        <p className="text-sm text-blue-600 mt-3 font-medium">💡 For new doctor & patient approvals, visit <a href="/admin/approvals" className="underline hover:text-blue-700">Manage Approvals</a></p>
+      {/* Gradient Header */}
+      <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-6 text-white shadow-xl">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Users className="h-6 w-6" /> Manage Users</h1>
+            <p className="mt-1 text-blue-100 text-sm">View and manage all registered users · <a href="/admin/approvals" className="underline text-white/90 hover:text-white">Pending approvals</a></p>
+          </div>
+          <Button variant="outline" size="sm" className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => api.get('/admin/users', { params: { limit: 1000 } }).then(r => { const list = r.data.users || r.data; setLocalUsers(Array.isArray(list) ? list : []); })}>
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}

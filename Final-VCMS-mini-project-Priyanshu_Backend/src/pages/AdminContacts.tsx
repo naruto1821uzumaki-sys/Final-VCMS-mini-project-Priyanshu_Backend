@@ -256,15 +256,19 @@ export default function AdminContacts() {
   return (
     <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl pb-12">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">Contact Management</h1>
-        <p className="text-muted-foreground mt-2 text-lg">View and manage all customer contact submissions</p>
+      <div className="rounded-2xl bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 p-6 text-white shadow-xl">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Contact Management</h1>
+            <p className="mt-1 text-cyan-100 text-sm">View and manage all customer contact submissions</p>
+          </div>
+        </div>
       </div>
 
       {/* Dashboard Stats */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-transparent">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>

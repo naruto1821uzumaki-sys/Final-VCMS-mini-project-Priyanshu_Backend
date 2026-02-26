@@ -1,20 +1,33 @@
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
 const mongoose = require('mongoose');
+// placeholder doctor logic was removed: public doctor endpoint will no
+// longer create fake users when a search/filter returns nothing.  All
+// doctors shown in the frontend will now correspond to actual
+// documents previously inserted by admins or seeded data.
 
 // Helper to map internal User -> PublicDoctorProfile shape expected by frontend
 function mapUserToPublicProfile(u) {
   // ensure we always return a usable name and at least some location info
   let rawName = u.displayName || u.name || '';
-  // if the stored name is just the specialization (or contains it), ignore it
-  if (
-    rawName &&
-    u.specialization &&
-    rawName.toLowerCase().includes(u.specialization.toLowerCase())
-  ) {
-    rawName = '';
+  // if the stored name is just the specialization, ignore it
+  if (rawName && u.specialization) {
+    const normalized = rawName
+      .replace(/^dr\.?\s*/i, '')
+      .replace(/\s+specialist$/i, '')
+      .trim();
+    if (normalized.toLowerCase() === u.specialization.toLowerCase()) {
+      rawName = '';
+    }
   }
   const fallbackName = rawName || u.specialization || 'Doctor';
+  const city = u.city || '';
+  const state = u.state || '';
+  const rawLocation = u.location || '';
+  const normalizedLocation = rawLocation.replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalizedCityState = `${city}, ${state}`.replace(/\s+/g, ' ').trim().toLowerCase();
+  const address = normalizedLocation && normalizedLocation === normalizedCityState ? '' : rawLocation;
+
   return {
     _id: u._id,
     name: fallbackName,
@@ -26,9 +39,9 @@ function mapUserToPublicProfile(u) {
     bio: u.bio || '',
     avatar: u.profileImage || u.avatar || null,
     location: {
-      address: u.location || 'Unknown address',
-      city: u.city || 'Unknown city',
-      state: u.state || 'Unknown state',
+      address: address || '',
+      city: city || 'Unknown city',
+      state: state || 'Unknown state',
     },
     consultationFee: u.consultationFee || 0,
     rating: u.rating || 0,
@@ -44,14 +57,23 @@ function mapUserToPublicProfile(u) {
 // Fallback: map raw PublicDoctor document (legacy collection) to frontend shape
 function mapRawPublicDoctor(pd) {
   let rawName = pd.displayName || pd.name || '';
-  if (
-    rawName &&
-    pd.specialization &&
-    rawName.toLowerCase().includes(pd.specialization.toLowerCase())
-  ) {
-    rawName = '';
+  if (rawName && pd.specialization) {
+    const normalized = rawName
+      .replace(/^dr\.?\s*/i, '')
+      .replace(/\s+specialist$/i, '')
+      .trim();
+    if (normalized.toLowerCase() === pd.specialization.toLowerCase()) {
+      rawName = '';
+    }
   }
   const fallbackName = rawName || pd.specialization || (pd.doctorId ? String(pd.doctorId) : 'Doctor');
+  const city = pd.city || '';
+  const state = pd.state || '';
+  const rawLocation = pd.location || '';
+  const normalizedLocation = rawLocation.replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalizedCityState = `${city}, ${state}`.replace(/\s+/g, ' ').trim().toLowerCase();
+  const address = normalizedLocation && normalizedLocation === normalizedCityState ? '' : rawLocation;
+
   return {
     _id: pd._id,
     name: fallbackName,
@@ -63,9 +85,9 @@ function mapRawPublicDoctor(pd) {
     bio: pd.bio || '',
     avatar: pd.profileImage || pd.avatar || null,
     location: {
-      address: pd.location || 'Unknown address',
-      city: pd.city || 'Unknown city',
-      state: pd.state || 'Unknown state',
+      address: address || '',
+      city: city || 'Unknown city',
+      state: state || 'Unknown state',
     },
     licenseNumber: pd.licenseNumber || '',
     registrationBody: pd.registrationBody || '',
@@ -95,7 +117,13 @@ exports.getPublicDoctors = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Build filter (use User collection for public doctors)
-    let filter = { role: 'doctor', isActive: true, isPublic: true };
+    // exclude any earlier placeholder records by convention
+    let filter = {
+      role: 'doctor',
+      email: { $not: /^placeholder_/ },
+      isActive: { $ne: false },
+      $or: [{ isPublic: true }, { approvalStatus: 'approved' }],
+    };
 
     if (specialization) {
       filter.specialization = { $regex: specialization, $options: 'i' };
@@ -118,7 +146,7 @@ exports.getPublicDoctors = async (req, res) => {
       filter.rating = { $gte: parseFloat(minRating) };
     }
 
-    const total = await User.countDocuments(filter);
+    let total = await User.countDocuments(filter);
     const doctors = await User.find(filter)
       .select('-__v -password -refreshTokens')
       .skip(skip)
@@ -127,18 +155,7 @@ exports.getPublicDoctors = async (req, res) => {
 
     let mapped = doctors.map(mapUserToPublicProfile);
 
-    // If no public doctors found in User collection, try legacy raw collection as a fallback
-    if ((!mapped || mapped.length === 0)) {
-      try {
-        const rawDocs = await mongoose.connection.collection('publicdoctors').find({}).toArray();
-        if (rawDocs && rawDocs.length > 0) {
-          mapped = rawDocs.map(mapRawPublicDoctor);
-        }
-      } catch (rawErr) {
-        // ignore raw collection errors; we'll return empty list below
-        console.warn('Fallback read of publicdoctors collection failed:', rawErr.message);
-      }
-    }
+
     res.json({
       success: true,
       doctors: mapped,
@@ -160,27 +177,8 @@ exports.getPublicDoctorProfile = async (req, res) => {
   try {
     const { doctorId } = req.params;
 
-    let doctor = await User.findOne({ _id: doctorId, role: 'doctor', isActive: true, isPublic: true }).select('-__v -password -refreshTokens');
+    let doctor = await User.findOne({ _id: doctorId, role: 'doctor', isActive: { $ne: false }, $or: [{ isPublic: true }, { approvalStatus: 'approved' }] }).select('-__v -password -refreshTokens');
     if (!doctor) {
-      // Try legacy publicdoctors collection by id or by doctorId field
-      try {
-        const rawCollection = mongoose.connection.collection('publicdoctors');
-        // attempt with _id first
-        let rawDoc = null;
-        try {
-          rawDoc = await rawCollection.findOne({ _id: mongoose.Types.ObjectId(doctorId) });
-        } catch (idErr) {
-          // if doctorId is not an ObjectId, try matching doctorId field
-          rawDoc = await rawCollection.findOne({ doctorId: doctorId });
-        }
-
-        if (rawDoc) {
-          return res.json({ success: true, doctor: mapRawPublicDoctor(rawDoc) });
-        }
-      } catch (rawErr) {
-        console.warn('Fallback lookup in publicdoctors failed:', rawErr.message);
-      }
-
       return res.status(404).json({ message: "Doctor not found or profile not public" });
     }
 
@@ -195,7 +193,7 @@ exports.getPublicDoctorProfile = async (req, res) => {
 exports.getSpecializations = async (req, res) => {
   try {
     const specializations = await User.aggregate([
-      { $match: { role: 'doctor', isActive: true, isPublic: true } },
+      { $match: { role: 'doctor', isActive: { $ne: false }, $or: [{ isPublic: true }, { approvalStatus: 'approved' }] } },
       { $group: { _id: "$specialization", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $project: { specialization: "$_id", count: 1, _id: 0 } },

@@ -59,7 +59,7 @@ const CreatePrescription = () => {
   const fetchAppointment = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/appointments/${appointmentId}`);
+      const response = await api.get(`/appointments/${appointmentId}`);
       if (response.data?.success && response.data?.appointment) {
         setAppointment(response.data.appointment);
       } else {
@@ -139,7 +139,7 @@ const CreatePrescription = () => {
 
     try {
       setSubmitting(true);
-      const response = await api.post(`/api/prescriptions`, {
+      const response = await api.post(`/prescriptions`, {
         appointmentId,
         diagnosis: formData.diagnosis.trim(),
         clinicalNotes: formData.clinicalNotes.trim(),

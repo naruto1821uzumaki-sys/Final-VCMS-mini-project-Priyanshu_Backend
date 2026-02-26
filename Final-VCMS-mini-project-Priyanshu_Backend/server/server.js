@@ -38,12 +38,13 @@ const {
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
-connectDB();
+// NOTE: DB connection is awaited inside main() below — do NOT call connectDB() here
 
 const app = express();
 const server = http.createServer(app);
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
+const PORT_RETRY_LIMIT = Number(process.env.PORT_RETRY_LIMIT) || 5;
 
 /* =========================================================
    ✅ SECURITY + CORS SETUP
@@ -105,6 +106,7 @@ const securityRoutes = require("./routes/securityRoutes");
 const consultationRoutes = require("./routes/consultationRoutes"); // ✅ NEW: Consultation form routes
 const contactRoutes = require("./routes/contactRoutes"); // ✅ NEW: Contact form routes
 const publicRoutes = require("./routes/publicRoutes"); // ✅ NEW: Public/guest routes
+const aiRoutes = require("./routes/aiRoutes"); // ✅ NEW: AI/OCR routes
 
 // Auth rate limiting
 app.use("/api/auth/login", authLimiter);
@@ -115,7 +117,7 @@ app.use("/api/public", publicRoutes); // ✅ NEW: Public routes (no auth require
 app.use("/api/auth", authRoutes);  // No CSRF for auth routes
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
-app.use("/api/admin", criticalOperationLimiter, adminRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/medical-history", medicalHistoryRoutes);
 app.use("/api/consultations", consultationRoutes); // ✅ NEW: Consultation form routes
@@ -124,6 +126,7 @@ app.use("/api/video", videoRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/contact", contactRoutes); // ✅ NEW: Contact routes
 app.use("/api/security", securityRoutes);
+app.use("/api/ai", aiRoutes); // ✅ NEW: AI/OCR routes
 
 /* =========================================================
    ✅ HEALTH + ROOT
@@ -147,7 +150,15 @@ app.get("/", (req, res) => {
 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:8081", "http://localhost:5173"],
+    origin: function (origin, callback) {
+      if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+        callback(null, true);
+      } else if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -397,7 +408,56 @@ app.use(errorHandler);
    ✅ START SERVER
 ========================================================= */
 
-server.listen(PORT, () => {
-  console.log(`🚀 Secure VCMS Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-});
+// ── startup helpers ────────────────────────────────────────────────────────
+
+let currentPort = PORT;
+let remainingPortRetries = PORT_RETRY_LIMIT;
+
+const doListen = (port) =>
+  new Promise((resolve, reject) => {
+    currentPort = port;
+
+    const onError = (error) => {
+      server.removeListener("error", onError);
+      if (error.code === "EADDRINUSE") {
+        if (remainingPortRetries <= 0) {
+          return reject(
+            new Error(
+              `Port ${port} is already in use and all retries exhausted. Free port ${PORT} and restart.`
+            )
+          );
+        }
+        const nextPort = port + 1;
+        remainingPortRetries -= 1;
+        console.warn(
+          `⚠️  Port ${port} is in use → retrying on ${nextPort} (${remainingPortRetries} left)…`
+        );
+        setTimeout(() => doListen(nextPort).then(resolve).catch(reject), 300);
+      } else {
+        reject(error);
+      }
+    };
+
+    server.once("error", onError);
+    server.listen(port, () => {
+      server.removeListener("error", onError);
+      console.log(`🚀 Secure VCMS Server running on port ${port}`);
+      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+      resolve(port);
+    });
+  });
+
+// ── main ────────────────────────────────────────────────────────────────────
+// Connect to DB FIRST, then open HTTP — this prevents 500 errors during DB warmup
+
+const main = async () => {
+  try {
+    await connectDB();
+    await doListen(PORT);
+  } catch (err) {
+    console.error("❌ Startup failed:", err.message);
+    process.exit(1);
+  }
+};
+
+main();

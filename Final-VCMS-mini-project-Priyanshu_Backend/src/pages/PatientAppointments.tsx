@@ -180,7 +180,7 @@ const PatientAppointments = () => {
                       <Video className="h-3 w-3" /> Join Consultation
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => navigate(`/prescription/${apt._id}`)}>
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/prescriptions/${apt._id}`)}>
                     {rx ? "View Prescription" : "View Rx"}
                   </Button>
                   {apt.status.toLowerCase() !== "completed" && apt.status.toLowerCase() !== "cancelled" && (

@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const mongoose = require('mongoose');
 const socketHandler = require('../utils/socketHandler');
 
 // Get all notifications for logged-in user with pagination and filtering
@@ -63,7 +64,7 @@ const getUnreadCount = async (req, res) => {
 
     // Get count by type
     const countByType = await Notification.aggregate([
-      { $match: { userId: require('mongoose').Types.ObjectId(userId), isRead: false } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId.toString()), isRead: false } },
       { $group: { _id: '$type', count: { $sum: 1 } } },
     ]);
 
