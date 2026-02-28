@@ -99,8 +99,8 @@ function applySecurityHeaders(req, res, next) {
 
 async function enforcementMiddleware(req, res, next) {
   try {
-    // Skip enforcement for health and public endpoints
-    if (req.path.startsWith('/api/health') || req.path.startsWith('/api/public')) {
+    // Skip enforcement for health, public, and AI/OCR endpoints (file uploads contain binary/medical text)
+    if (req.path.startsWith('/api/health') || req.path.startsWith('/api/public') || req.path.startsWith('/api/ai')) {
       return next();
     }
 

@@ -168,6 +168,29 @@ const parsePrescriptionRawText = (text) => {
 const ruleBasedAnalysis = (text) => {
   const lower = text.toLowerCase();
 
+  // ── Non-medical document detection ──
+  const medicalKeywords = [
+    'patient', 'doctor', 'diagnosis', 'prescription', 'medication', 'dosage',
+    'treatment', 'symptom', 'blood', 'glucose', 'hemoglobin', 'cholesterol',
+    'creatinine', 'thyroid', 'tsh', 'blood pressure', 'bp', 'infection',
+    'xray', 'x-ray', 'ct scan', 'mri', 'ultrasound', 'lab', 'test result',
+    'hospital', 'clinic', 'physician', 'nurse', 'surgery', 'biopsy',
+    'report', 'pathology', 'radiology', 'ecg', 'ekg', 'urine', 'serum',
+    'platelet', 'wbc', 'rbc', 'hba1c', 'glucose', 'ldl', 'hdl',
+    'triglyceride', 'urea', 'kidney', 'liver', 'cardiac', 'pulmonary',
+    'mg', 'ml', 'units', 'mmhg', 'normal range', 'reference range',
+    'antibiotic', 'analgesic', 'tablet', 'capsule', 'injection', 'syrup',
+    'frequency', 'twice', 'thrice', 'daily', 'bedtime', 'after meals',
+  ];
+  const hasMedicalContent = medicalKeywords.some((kw) => lower.includes(kw));
+  if (!hasMedicalContent) {
+    return {
+      summary: 'This document does not appear to be a medical report or prescription. Please upload a valid medical document such as a lab report, prescription, or clinical notes.',
+      keyPoints: ['⚠️ No medical content detected in the uploaded file'],
+      recommendations: ['Please upload a valid medical document (lab report, prescription, test results, etc.)'],
+    };
+  }
+
   // Detect prescriptions first and use dedicated parser
   const isPrescription =
     (lower.includes('prescription') || lower.includes('medications')) &&

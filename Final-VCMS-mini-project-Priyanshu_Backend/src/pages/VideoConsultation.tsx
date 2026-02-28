@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import useSocket from "@/hooks/useSocket";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ const VideoConsultation = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { on, off, emit, joinRoom } = useSocket();
 
   const [appointment, setAppointment] = useState<any>(null);
   const [connected, setConnected] = useState(false);
@@ -87,6 +89,8 @@ const VideoConsultation = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream>(new MediaStream());
+  // Keep a ref to appointment so async WebRTC callbacks can access it
+  const appointmentRef = useRef<any>(null);
 
   const normalizedRole = (user?.role || "").toLowerCase();
   const isDoctor = normalizedRole === "doctor";
@@ -128,11 +132,97 @@ const VideoConsultation = () => {
     return () => clearInterval(interval);
   }, [isDoctor, appointmentId, prescription, pollingActive, toast]);
 
+  // ── Join video room via socket ──
+  useEffect(() => {
+    if (!appointmentId || !user) return;
+    joinRoom(`video_${appointmentId}`);
+  }, [appointmentId, user, joinRoom]);
+
+  // ── WebRTC signaling via socket ──
+  useEffect(() => {
+    if (!appointmentId || !user) return;
+
+    const handleOffer = async ({ offer, from }: { offer: RTCSessionDescriptionInit; from: string }) => {
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        emit("video:answer", { answer, to: from, appointmentId });
+      } catch (e) {
+        console.error("Error handling offer:", e);
+      }
+    };
+
+    const handleAnswer = async ({ answer }: { answer: RTCSessionDescriptionInit }) => {
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      } catch (e) {
+        console.error("Error handling answer:", e);
+      }
+    };
+
+    const handleIceCandidate = async ({ candidate }: { candidate: RTCIceCandidateInit }) => {
+      const pc = peerConnectionRef.current;
+      if (!pc || !candidate) return;
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.error("Error adding ICE candidate:", e);
+      }
+    };
+
+    const handleEndCall = () => {
+      cleanupCall();
+      toast({ title: "Call ended", description: "The other party ended the call." });
+      if (isDoctor) navigate("/doctor/today", { replace: true });
+      else navigate("/patient", { replace: true });
+    };
+
+    on("video:offer", handleOffer);
+    on("video:answer", handleAnswer);
+    on("video:ice-candidate", handleIceCandidate);
+    on("video:end-call", handleEndCall);
+
+    return () => {
+      off("video:offer", handleOffer);
+      off("video:answer", handleAnswer);
+      off("video:ice-candidate", handleIceCandidate);
+      off("video:end-call", handleEndCall);
+    };
+  }, [appointmentId, user, isDoctor, on, off, emit, navigate, toast]);
+
+  // ── Doctor creates offer once call is active and appointment is loaded ──
+  useEffect(() => {
+    if (!isDoctor || !callActive || !appointmentRef.current) return;
+    const pc = peerConnectionRef.current;
+    if (!pc) return;
+    const patientId = appointmentRef.current?.patientId?._id;
+    if (!patientId) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        emit("video:offer", { offer, to: patientId, appointmentId });
+      } catch (e) {
+        console.error("Error creating WebRTC offer:", e);
+      }
+    }, 1500); // small delay to let patient join room first
+
+    return () => clearTimeout(timer);
+  }, [isDoctor, callActive, appointmentId, emit]);
+
   const fetchAppointment = async () => {
     try {
       const response = await api.get(`/appointments/${appointmentId}`);
       if (response.data?.success) {
-        setAppointment(response.data.appointment);
+        const appt = response.data.appointment;
+        setAppointment(appt);
+        appointmentRef.current = appt;
       }
     } catch (error: any) {
       toast({
@@ -304,11 +394,16 @@ const VideoConsultation = () => {
         }
       };
 
-      // Handle ICE candidates
+      // Handle ICE candidates — forward to the other peer via socket signaling
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          // Send ICE candidate via signaling
-          console.log("ICE candidate:", event.candidate);
+          const appt = appointmentRef.current;
+          const targetId = isDoctor
+            ? appt?.patientId?._id
+            : appt?.doctorId?._id;
+          if (targetId) {
+            emit("video:ice-candidate", { candidate: event.candidate, to: targetId, appointmentId });
+          }
         }
       };
 
@@ -359,9 +454,16 @@ const VideoConsultation = () => {
   };
 
   const endCall = async () => {
+    // Notify the other party before cleanup
+    const appt = appointmentRef.current;
+    const targetId = isDoctor ? appt?.patientId?._id : appt?.doctorId?._id;
+    if (targetId) {
+      emit("video:end-call", { to: targetId, appointmentId });
+    }
+
     cleanupCall();
 
-    // Mark appointment as completed for all roles when ending the call
+    // Mark appointment as completed
     try {
       if (appointmentId) {
         await api.put(`/appointments/${appointmentId}/status`, { status: "completed" });
@@ -370,14 +472,14 @@ const VideoConsultation = () => {
       console.error("Failed to update appointment:", error);
     }
 
-    // Use replace:true so user can't press Back and re-enter the video page
+    // Navigate back to respective dashboard
     if (isDoctor) {
       navigate("/doctor/today", { replace: true });
       return;
     }
 
     if (normalizedRole === "patient") {
-      navigate("/patient/appointments", { replace: true });
+      navigate("/patient", { replace: true });
       return;
     }
 

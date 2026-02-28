@@ -136,7 +136,7 @@ const PatientMedicalHistory = () => {
     try {
       const res = await api.get(`/medical-history/patient/${user?._id}`);
       if (res.data?.success) {
-        setMedicalHistory(res.data.medicalHistory || []);
+        setMedicalHistory(res.data.entries || res.data.medicalHistory || []);
       }
     } catch (err) {
       console.error("Error fetching medical history:", err);
