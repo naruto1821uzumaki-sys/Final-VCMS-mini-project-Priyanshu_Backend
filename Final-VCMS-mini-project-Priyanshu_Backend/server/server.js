@@ -319,6 +319,14 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Signal from patient that they are ready — triggers doctor to create WebRTC offer
+  socket.on("video:user-ready", (data) => {
+    const { to } = data;
+    socketHandler.emitToUser(to, "video:user-ready", {
+      from: socket.id,
+    });
+  });
+
   // ✅ ENHANCED: Chat events
   socket.on("chat:message", (data) => {
     const { to, message, roomId } = data;

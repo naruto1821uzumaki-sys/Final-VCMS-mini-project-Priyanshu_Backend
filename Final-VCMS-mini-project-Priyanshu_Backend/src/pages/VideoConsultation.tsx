@@ -142,14 +142,19 @@ const VideoConsultation = () => {
   useEffect(() => {
     if (!appointmentId || !user) return;
 
-    const handleOffer = async ({ offer, from }: { offer: RTCSessionDescriptionInit; from: string }) => {
+    const handleOffer = async ({ offer }: { offer: RTCSessionDescriptionInit; from: string }) => {
       const pc = peerConnectionRef.current;
       if (!pc) return;
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        emit("video:answer", { answer, to: from, appointmentId });
+        // Always reply to the doctor's MongoDB _id (not socket.id),
+        // because emitToUser on the server keys by MongoDB userId.
+        const doctorMongoId = appointmentRef.current?.doctorId?._id;
+        if (doctorMongoId) {
+          emit("video:answer", { answer, to: doctorMongoId, appointmentId });
+        }
       } catch (e) {
         console.error("Error handling offer:", e);
       }
@@ -182,20 +187,38 @@ const VideoConsultation = () => {
       else navigate("/patient", { replace: true });
     };
 
+    // Doctor: create offer when patient signals ready
+    const handlePatientReady = async () => {
+      if (!isDoctor) return;
+      const pc = peerConnectionRef.current;
+      if (!pc) return;
+      const patientId = appointmentRef.current?.patientId?._id;
+      if (!patientId) return;
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        emit("video:offer", { offer, to: patientId, appointmentId });
+      } catch (e) {
+        console.error("Error creating offer on patient-ready signal:", e);
+      }
+    };
+
     on("video:offer", handleOffer);
     on("video:answer", handleAnswer);
     on("video:ice-candidate", handleIceCandidate);
     on("video:end-call", handleEndCall);
+    on("video:user-ready", handlePatientReady);
 
     return () => {
       off("video:offer", handleOffer);
       off("video:answer", handleAnswer);
       off("video:ice-candidate", handleIceCandidate);
       off("video:end-call", handleEndCall);
+      off("video:user-ready", handlePatientReady);
     };
   }, [appointmentId, user, isDoctor, on, off, emit, navigate, toast]);
 
-  // ── Doctor creates offer once call is active and appointment is loaded ──
+  // ── Doctor: fallback offer if patient was already ready before doctor joined ──
   useEffect(() => {
     if (!isDoctor || !callActive || !appointmentRef.current) return;
     const pc = peerConnectionRef.current;
@@ -203,15 +226,19 @@ const VideoConsultation = () => {
     const patientId = appointmentRef.current?.patientId?._id;
     if (!patientId) return;
 
+    // 2-second fallback: in case patient joined first and we missed their ready signal
     const timer = setTimeout(async () => {
-      try {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        emit("video:offer", { offer, to: patientId, appointmentId });
-      } catch (e) {
-        console.error("Error creating WebRTC offer:", e);
+      // Only create offer if not already in progress (signalingState is 'stable')
+      if (pc.signalingState === "stable") {
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          emit("video:offer", { offer, to: patientId, appointmentId });
+        } catch (e) {
+          console.error("Error creating fallback offer:", e);
+        }
       }
-    }, 1500); // small delay to let patient join room first
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [isDoctor, callActive, appointmentId, emit]);
@@ -425,6 +452,17 @@ const VideoConsultation = () => {
       };
 
       setCallActive(true);
+
+      // Patient signals readiness to doctor so doctor can create WebRTC offer
+      if (!isDoctor) {
+        const doctorId = appointmentRef.current?.doctorId?._id;
+        if (doctorId) {
+          // Small delay to ensure socket handlers are registered
+          setTimeout(() => {
+            emit("video:user-ready", { to: doctorId, appointmentId });
+          }, 500);
+        }
+      }
     } catch (error) {
       console.error("Failed to initialize call:", error);
       toast({
