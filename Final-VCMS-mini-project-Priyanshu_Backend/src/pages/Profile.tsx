@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,21 @@ const SPECIALIZATIONS = [
   "Urology",
 ];
 
+const DOCTOR_SYMPTOM_OPTIONS = [
+  "Fever",
+  "Cough",
+  "Headache",
+  "Chest Pain",
+  "Breathing Difficulty",
+  "Stomach Pain",
+  "Skin Rash",
+  "Joint Pain",
+  "Back Pain",
+  "Anxiety/Stress",
+  "Sleep Problems",
+  "General Weakness",
+];
+
 const Profile = () => {
   const { user, updateUser, changePassword, sendOtp, verifyOtp, resetPassword } = useAuth();
   const { toast } = useToast();
@@ -70,6 +86,8 @@ const Profile = () => {
   const [timeSlotDay, setTimeSlotDay] = useState<number>(0);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [selectedDoctorSymptoms, setSelectedDoctorSymptoms] = useState<string[]>([]);
+  const [otherSymptomText, setOtherSymptomText] = useState("");
 
   useEffect(() => {
     // Update form when user changes
@@ -86,6 +104,22 @@ const Profile = () => {
         availability: user.availability || [],
         symptoms: user.symptoms?.join(", ") || "",
       });
+
+      const userSymptoms = user.symptoms || [];
+      const predefined = userSymptoms.filter((symptom) =>
+        DOCTOR_SYMPTOM_OPTIONS.some(
+          (option) => option.toLowerCase() === String(symptom).toLowerCase()
+        )
+      );
+      const custom = userSymptoms.filter(
+        (symptom) =>
+          !DOCTOR_SYMPTOM_OPTIONS.some(
+            (option) => option.toLowerCase() === String(symptom).toLowerCase()
+          )
+      );
+
+      setSelectedDoctorSymptoms(predefined.map((s) => String(s)));
+      setOtherSymptomText(custom.join(", "));
     }
   }, [user]);
 
@@ -113,15 +147,17 @@ const Profile = () => {
       }
 
       if (user.role === "doctor") {
+        const customSymptoms = otherSymptomText
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
         updates.specialization = form.specialization;
         updates.experience = form.experience ? parseInt(form.experience) : undefined;
         updates.consultationFee = form.consultationFee ? parseInt(form.consultationFee) : undefined;
         updates.location = form.location;
         updates.availability = form.availability;
-        updates.symptoms = form.symptoms
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
+        updates.symptoms = [...selectedDoctorSymptoms, ...customSymptoms];
       }
 
       const result = await updateUser(user._id, updates);
@@ -236,6 +272,12 @@ const Profile = () => {
   const removeTimeSlot = (index: number) => {
     const updated = form.availability.filter((_, i) => i !== index);
     setForm((prev) => ({ ...prev, availability: updated }));
+  };
+
+  const toggleDoctorSymptom = (symptom: string, checked: boolean) => {
+    setSelectedDoctorSymptoms((prev) =>
+      checked ? [...prev, symptom] : prev.filter((s) => s !== symptom)
+    );
   };
 
   return (
@@ -425,13 +467,32 @@ const Profile = () => {
 
               <div className="space-y-2">
                 <Label>Symptoms You Treat</Label>
-                <Textarea
-                  disabled={!editing}
-                  value={form.symptoms}
-                  onChange={(e) => setForm((p) => ({ ...p, symptoms: e.target.value }))}
-                  placeholder="e.g. chest pain, fever, headache (comma separated)"
-                  rows={2}
-                />
+                <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {DOCTOR_SYMPTOM_OPTIONS.map((symptom) => (
+                      <label key={symptom} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          disabled={!editing}
+                          checked={selectedDoctorSymptoms.includes(symptom)}
+                          onCheckedChange={(checked) =>
+                            toggleDoctorSymptom(symptom, Boolean(checked))
+                          }
+                        />
+                        <span>{symptom}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Other (comma separated)</Label>
+                    <Input
+                      disabled={!editing}
+                      value={otherSymptomText}
+                      onChange={(e) => setOtherSymptomText(e.target.value)}
+                      placeholder="e.g. migraine, sinusitis"
+                    />
+                  </div>
+                </div>
               </div>
             </>
           )}

@@ -26,6 +26,7 @@ export const MedicalReportAnalyzer = () => {
   const [extractedText, setExtractedText] = useState("");
   const [analysis, setAnalysis] = useState<ReportAnalysis | null>(null);
   const [showDialog, setShowDialog] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -33,16 +34,16 @@ export const MedicalReportAnalyzer = () => {
 
     // Validate file type
     const allowedTypes = [
-      "application/pdf",
       "image/jpeg",
       "image/png",
       "image/jpg",
+      "application/pdf",
     ];
 
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: "Invalid File Type",
-        description: "Please upload PDF or image files only.",
+        description: "Please upload a JPG, PNG, or PDF file.",
         variant: "destructive",
       });
       return;
@@ -58,6 +59,7 @@ export const MedicalReportAnalyzer = () => {
     }
 
     setSelectedFile(file);
+    setOcrError(null);
   };
 
   const handleDragAndDrop = (e: React.DragEvent) => {
@@ -88,6 +90,12 @@ export const MedicalReportAnalyzer = () => {
       const extractedTextResult = await openaiService.extractTextFromImage(selectedFile);
       setExtractedText(extractedTextResult);
 
+      // Guard: nothing to analyze if extraction yielded no text
+      if (!extractedTextResult || extractedTextResult.trim().length < 10) {
+        setOcrError("No readable text found in this file. For images, ensure the scan is clear and well-lit. For PDFs, make sure the document contains selectable text (not a scanned/image-only PDF).");
+        return;
+      }
+
       // Step 2: Analyze extracted text
       setExtracting(false);
       setAnalyzing(true);
@@ -111,11 +119,7 @@ export const MedicalReportAnalyzer = () => {
       });
     } catch (error) {
       console.error("Analysis error:", error);
-      toast({
-        title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Could not analyze report.",
-        variant: "destructive",
-      });
+      setOcrError(error instanceof Error ? error.message : "Could not analyze report. Please try again.");
     } finally {
       setLoading(false);
       setExtracting(false);
@@ -174,7 +178,7 @@ This is an AI-generated analysis and should be reviewed by a medical professiona
               id="report-upload"
               onChange={handleFileSelect}
               className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".jpg,.jpeg,.png,.pdf"
             />
             <label
               htmlFor="report-upload"
@@ -185,10 +189,21 @@ This is an AI-generated analysis and should be reviewed by a medical professiona
               </div>
               <div className="text-center">
                 <p className="font-semibold text-foreground">Click to upload or drag &amp; drop</p>
-                <p className="text-sm text-muted-foreground mt-0.5">PDF, JPG or PNG — max 10 MB</p>
+                <p className="text-sm text-muted-foreground mt-0.5">JPG, PNG or PDF — max 10 MB</p>
               </div>
             </label>
           </div>
+
+          {/* Inline OCR / analysis error */}
+          {ocrError && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-500" />
+              <div>
+                <p className="font-semibold">No text — no summary available</p>
+                <p className="mt-0.5 text-red-600/80">{ocrError}</p>
+              </div>
+            </div>
+          )}
 
           {/* Selected File Display */}
           {selectedFile && (

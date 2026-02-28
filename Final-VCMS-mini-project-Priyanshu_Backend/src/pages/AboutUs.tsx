@@ -1,10 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { ArrowRight, Heart, Users, Zap, Shield } from "lucide-react";
 
 const AboutUs = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Admins don't need this public page
+  useEffect(() => {
+    if (user?.role === "admin") navigate("/admin", { replace: true });
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-secondary/5 to-primary/5">

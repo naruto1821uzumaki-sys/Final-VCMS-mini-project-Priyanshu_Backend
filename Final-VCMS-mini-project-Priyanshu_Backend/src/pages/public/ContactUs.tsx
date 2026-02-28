@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,11 @@ export function ContactUs() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Admins don't need this public contact form
+  useEffect(() => {
+    if (user?.role === "admin") navigate("/admin", { replace: true });
+  }, [user, navigate]);
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -63,7 +68,10 @@ export function ContactUs() {
       return;
     }
 
-    if (!formData.problemType || !formData.subject || !formData.description) {
+    const subject = formData.subject.trim();
+    const description = formData.description.trim();
+
+    if (!formData.problemType || !subject || !description) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -72,9 +80,31 @@ export function ContactUs() {
       return;
     }
 
+    if (subject.length < 5 || subject.length > 100) {
+      toast({
+        title: "Invalid Subject",
+        description: "Subject must be between 5 and 100 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (description.length < 10 || description.length > 2000) {
+      toast({
+        title: "Invalid Description",
+        description: "Description must be between 10 and 2000 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await api.post("/contact/submit", formData);
+      const res = await api.post("/contact/submit", {
+        ...formData,
+        subject,
+        description,
+      });
 
       if (res.data?.success) {
         toast({

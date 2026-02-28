@@ -105,15 +105,23 @@ export default function AdminContacts() {
       ]);
 
       if (statsRes.data?.success) {
-        setStats(statsRes.data.data);
+        const rawStats = statsRes.data.stats || {};
+        setStats({
+          total: rawStats.total?.[0]?.count || 0,
+          open: rawStats.open?.[0]?.count || 0,
+          inProgress: rawStats.inProgress?.[0]?.count || 0,
+          resolved: rawStats.resolved?.[0]?.count || 0,
+          urgent: rawStats.urgent?.[0]?.count || 0,
+          byType: rawStats.byType || {},
+          byRole: rawStats.byRole || {},
+        });
       }
 
       if (contactsRes.data?.success) {
-        setContacts(contactsRes.data.data || []);
+        setContacts(contactsRes.data.contacts || []);
       } else {
         setContacts([]);
       }
-      setFilteredContacts([]);
     } catch (error) {
       console.error("Error fetching data:", error);
       setContacts([]);

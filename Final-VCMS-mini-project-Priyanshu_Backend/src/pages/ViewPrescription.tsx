@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, ArrowLeft, AlertCircle } from "lucide-react";
+import { FileText, Download, ArrowLeft, AlertCircle, Sparkles, ClipboardList } from "lucide-react";
 import api from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { PrescriptionAISummary } from "@/components/PrescriptionAISummary";
 
 interface Medication {
   name: string;
@@ -36,6 +38,30 @@ const ViewPrescription = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const role = (user?.role || "").toLowerCase();
+
+  // Inject print styles once
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "rx-print-styles";
+    style.textContent = `
+      @media print {
+        body > *:not(#rx-print-root) { display: none !important; }
+        #rx-print-root { display: block !important; }
+        .no-print, nav, header, aside, footer, [data-sidebar] { display: none !important; }
+        .print\\:block { display: block !important; }
+        @page { margin: 1.5cm; }
+        body { background: white !important; }
+        .shadow-lg, .shadow-md { box-shadow: none !important; }
+        button { display: none !important; }
+      }
+    `;
+    if (!document.getElementById("rx-print-styles")) {
+      document.head.appendChild(style);
+    }
+    return () => { document.getElementById("rx-print-styles")?.remove(); };
+  }, []);
 
   const [prescription, setPrescription] = useState<Prescription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,7 +154,7 @@ const ViewPrescription = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
+    <div id="rx-print-root" className="min-h-screen bg-slate-50 py-8">
       <div className="container mx-auto px-4 space-y-6 max-w-4xl">
         <div className="flex items-center justify-between">
           <div>
@@ -139,8 +165,14 @@ const ViewPrescription = () => {
             <Button size="sm" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Back
             </Button>
-            <Button size="sm" onClick={() => window.print()}>
-              <Download className="h-4 w-4 mr-2" /> Print
+            <Button size="sm" onClick={() => {
+              if (prescription.medications && prescription.medications.length > 0) {
+                window.print();
+              } else {
+                navigate(role === "doctor" ? "/doctor/dashboard" : "/patient/dashboard");
+              }
+            }}>
+              <Download className="h-4 w-4 mr-2" /> {prescription.medications?.length > 0 ? "Print" : "No Rx to Print"}
             </Button>
           </div>
         </div>
@@ -228,6 +260,37 @@ const ViewPrescription = () => {
                 <div className="bg-green-50 rounded p-4">
                   <p className="text-xs text-slate-600 font-medium mb-1">Follow-up Recommended</p>
                   <p className="text-lg font-semibold text-green-700">{new Date(prescription.followUpDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Role-aware action buttons */}
+            <div className="border-t pt-4 flex flex-wrap gap-2">
+              {role === "patient" && (
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate("/patient/medical-history")}>
+                  <ClipboardList className="h-4 w-4" /> Medical History
+                </Button>
+              )}
+              {role === "doctor" && (
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate(`/create-prescription/${prescription.appointmentId?._id || prescription.appointmentId}`)}>
+                  <FileText className="h-4 w-4" /> Update Prescription
+                </Button>
+              )}
+            </div>
+
+            {/* AI Summary — shown to patients and doctors */}
+            {(role === "patient" || role === "doctor") && (
+              <div className="border-t pt-6">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 space-y-2">
+                  <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" /> AI Prescription Summary
+                  </p>
+                  <PrescriptionAISummary
+                    medications={prescription.medications || []}
+                    diagnosis={prescription.diagnosis || ""}
+                    treatmentPlan={(prescription as any).treatmentPlan || ""}
+                    followUpRecommendations={(prescription as any).followUpRecommendations || ""}
+                  />
                 </div>
               </div>
             )}

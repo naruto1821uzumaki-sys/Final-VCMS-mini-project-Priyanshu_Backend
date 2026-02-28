@@ -17,7 +17,7 @@ import api from "@/services/api";
 
 const DoctorDashboard = () => {
   const { user } = useAuth();
-  const { appointments, acceptAppointment, rejectAppointment, updateAppointmentStatus, addPrescription, fetchAppointments } = useClinic();
+  const { appointments, acceptAppointment, rejectAppointment, updateAppointmentStatus, addPrescription, fetchAppointments, getPrescriptionByAppointment } = useClinic();
   const { socket } = useSocket();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,7 +30,11 @@ const DoctorDashboard = () => {
   const upcomingAppointments = myAppointments.filter((a) => a.date > today && ["Accepted", "Booked"].includes(a.status));
   const completedAppointments = myAppointments.filter((a) => a.status === "Completed");
   const uniquePatients = new Set(myAppointments.filter((a) => a.status !== "Cancelled").map((a) => a.patientId)).size;
-  const estimatedEarnings = completedAppointments.length * (user?.consultationFee || 0);
+  // Sum consultation fees from individual completed appointments (more accurate than user?.consultationFee)
+  const estimatedEarnings = completedAppointments.reduce((sum, a) => sum + (a.consultationFee || (user as any)?.consultationFee || 0), 0);
+  const feePerConsult = completedAppointments.length > 0
+    ? Math.round(estimatedEarnings / completedAppointments.length)
+    : ((user as any)?.consultationFee || 0);
 
   // Reject state
   const [rejectId, setRejectId] = useState<string | null>(null);
@@ -203,14 +207,20 @@ const DoctorDashboard = () => {
 
           {/* Estimated Earnings */}
           <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
-            onClick={() => navigate("/profile")}>
+            onClick={() => document.getElementById("completed-section")?.scrollIntoView({ behavior: "smooth" })}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-3">
                 <IndianRupee className="h-8 w-8 opacity-80" />
                 <span className="text-sm font-medium opacity-80">Earnings</span>
               </div>
               <div className="text-4xl font-bold">₹{estimatedEarnings.toLocaleString("en-IN")}</div>
-              <p className="text-sm mt-1 opacity-80">{completedAppointments.length} completed × ₹{user?.consultationFee || 0}</p>
+              {estimatedEarnings === 0 && completedAppointments.length > 0 ? (
+                <p className="text-sm mt-1 opacity-90 underline cursor-pointer" onClick={(e) => { e.stopPropagation(); navigate("/profile"); }}>
+                  Set consultation fee in Profile ↗
+                </p>
+              ) : (
+                <p className="text-sm mt-1 opacity-80">{completedAppointments.length} completed × ₹{feePerConsult} each</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -317,9 +327,14 @@ const DoctorDashboard = () => {
                             </Button>
                           )}
                           {s === "In Progress" && (
-                            <Button size="sm" variant="outline" className="gap-1 border-green-400 text-green-700" onClick={() => handleMarkCompleted(apt._id)}>
-                              <CheckCircle className="h-3.5 w-3.5" /> Complete
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" className="gap-1 bg-green-600 hover:bg-green-700 text-white" onClick={() => navigate(`/video/${apt._id}`)}>
+                                <Video className="h-3.5 w-3.5" /> Rejoin Video
+                              </Button>
+                              <Button size="sm" variant="outline" className="gap-1 border-green-400 text-green-700" onClick={() => handleMarkCompleted(apt._id)}>
+                                <CheckCircle className="h-3.5 w-3.5" /> Complete
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -366,40 +381,53 @@ const DoctorDashboard = () => {
         )}
 
         {/* ─── Recent Consultations ─── */}
-        {completedAppointments.length > 0 && (
+        <div id="completed-section">
           <Card className="border-0 shadow-lg">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <Stethoscope className="h-5 w-5 text-emerald-500" />
-                Recent Consultations
+                Completed Consultations
                 <Badge variant="secondary">{completedAppointments.length} completed</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {[...completedAppointments].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((apt) => (
-                  <div key={apt._id} className="flex items-center justify-between rounded-lg border bg-emerald-50/50 dark:bg-emerald-900/10 p-3">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm">{apt.patientName}</p>
-                        <p className="text-xs text-muted-foreground">{apt.date} • {apt.time}</p>
+              {completedAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No completed consultations yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {[...completedAppointments].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((apt) => {
+                    const rx = getPrescriptionByAppointment?.(apt._id || apt.id);
+                    return (
+                      <div key={apt._id} className="flex items-center justify-between rounded-lg border bg-emerald-50/50 dark:bg-emerald-900/10 p-3">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm">{apt.patientName}</p>
+                            <p className="text-xs text-muted-foreground">{apt.date} • {apt.time}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {rx && (
+                            <Button size="sm" variant="ghost" className="text-xs text-muted-foreground"
+                              onClick={() => navigate(`/prescriptions/${rx._id || apt._id}`)}>View Rx</Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => navigate(`/create-prescription/${apt._id}`)}
+                          >
+                            <FileText className="h-3.5 w-3.5" /> {rx ? "Edit Prescription" : "Write Prescription"}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                      onClick={() => navigate(`/create-prescription/${apt._id}`)}
-                    >
-                      <FileText className="h-3.5 w-3.5" /> Write Prescription
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
+        </div>
 
 
       </div>

@@ -29,10 +29,12 @@ export const PrescriptionAISummary = ({
   const [loading, setLoading] = useState(false);
   const [summaryData, setSummaryData] = useState<SummaryState | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const handleGenerateSummary = async () => {
     try {
       setLoading(true);
+      setSummaryError(null);
       const result = await openaiService.summarizePrescription(
         medications,
         diagnosis,
@@ -47,11 +49,7 @@ export const PrescriptionAISummary = ({
       });
     } catch (error) {
       console.error("Summary error:", error);
-      toast({
-        title: "Error",
-        description: "Could not generate summary. Please try again.",
-        variant: "destructive",
-      });
+      setSummaryError(error instanceof Error ? error.message : "Could not generate summary. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -77,6 +75,16 @@ export const PrescriptionAISummary = ({
           </>
         )}
       </Button>
+
+      {summaryError && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-red-500" />
+          <div>
+            <p className="font-semibold">No summary available</p>
+            <p className="mt-0.5 text-xs text-red-600/80">{summaryError}</p>
+          </div>
+        </div>
+      )}
 
       {summaryData && expanded && (
         <Card className="border-amber-200 bg-amber-50">

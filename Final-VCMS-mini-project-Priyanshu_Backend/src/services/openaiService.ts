@@ -1,4 +1,5 @@
 import api from './api';
+import axios from 'axios';
 
 /**
  * Service to interact with OpenAI API for summaries and analysis
@@ -70,8 +71,15 @@ export const openaiService = {
         recommendations: response.data.recommendations || [],
         aiPowered: response.data.aiPowered,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error analyzing report:', error);
+      if (axios.isAxiosError(error)) {
+        const msg = error.response?.data?.error || error.response?.data?.message;
+        if (msg) throw new Error(msg);
+        if (error.code === 'ERR_NETWORK') {
+          throw new Error('Backend server is not reachable on port 5000. Please start the backend server.');
+        }
+      }
       throw new Error('Failed to analyze report');
     }
   },
@@ -89,8 +97,22 @@ export const openaiService = {
       });
 
       return response.data.text;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error extracting text:', error);
+      if (axios.isAxiosError(error)) {
+        if (error.response?.data?.message) {
+          throw new Error(error.response.data.message);
+        }
+
+        if (error.response?.data?.error) {
+          throw new Error(error.response.data.error);
+        }
+
+        if (error.code === 'ERR_NETWORK') {
+          throw new Error('Backend server is not reachable on port 5000. Please start the backend server.');
+        }
+      }
+
       throw new Error('Failed to extract text from image');
     }
   },

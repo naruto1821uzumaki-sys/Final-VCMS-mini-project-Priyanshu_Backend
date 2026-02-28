@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSocket } from "@/hooks/useSocket";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/services/api";
-import { FileText, Download, CheckCircle2, Clock, AlertCircle, Pill, X, Stethoscope, CalendarDays } from "lucide-react";
+import { FileText, Download, CheckCircle2, Clock, AlertCircle, Pill, X, Stethoscope, CalendarDays, Printer } from "lucide-react";
 import PrescriptionAISummary from "@/components/PrescriptionAISummary";
 
 interface Medication {
@@ -50,12 +51,17 @@ const PatientPrescriptions = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const navigate = useNavigate();
+
+  const displayedPrescriptions = statusFilter === "all"
+    ? prescriptions
+    : prescriptions.filter((p) => p.status === statusFilter);
 
   useEffect(() => {
     if (user?._id) {
       fetchPrescriptions();
     }
-  }, [user?._id, statusFilter]);
+  }, [user?._id]);
 
   // Socket listener for real-time prescription updates
   useEffect(() => {
@@ -75,11 +81,7 @@ const PatientPrescriptions = () => {
   const fetchPrescriptions = async () => {
     try {
       setLoading(true);
-      let url = `/prescriptions/patient/${user?._id}`;
-      if (statusFilter !== "all") {
-        url += `?status=${statusFilter}`;
-      }
-      const response = await api.get(url);
+      const response = await api.get(`/prescriptions/patient/${user?._id}?limit=100`);
       if (response.data?.success) {
         setPrescriptions(response.data.prescriptions || []);
       }
@@ -178,28 +180,49 @@ const PatientPrescriptions = () => {
             <p className="text-2xl font-bold text-primary-foreground">{prescriptions.length}</p>
             <p className="text-primary-foreground/70 text-xs mt-0.5">Total</p>
           </div>
+          {statusFilter !== "all" && (
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl px-5 py-3 text-center">
+              <p className="text-2xl font-bold text-primary-foreground">{displayedPrescriptions.length}</p>
+              <p className="text-primary-foreground/70 text-xs mt-0.5 capitalize">{statusFilter === "draft" ? "New" : statusFilter.replace("_", " ")}</p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Status Filter */}
       <div className="flex gap-1 bg-white border border-border rounded-xl p-1 w-fit shadow-sm flex-wrap">
-        {["all", "issued", "viewed", "picked_up", "cancelled"].map((status) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
-              statusFilter === status
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {status === "picked_up" ? "Picked Up" : status.charAt(0).toUpperCase() + status.slice(1)}
-          </button>
-        ))}
+        {[
+          { value: "all",       label: "All" },
+          { value: "draft",     label: "New" },
+          { value: "issued",    label: "Issued" },
+          { value: "viewed",    label: "Viewed" },
+          { value: "picked_up", label: "Picked Up" },
+          { value: "cancelled", label: "Cancelled" },
+        ].map(({ value, label }) => {
+          const count = value === "all" ? prescriptions.length : prescriptions.filter(p => p.status === value).length;
+          return (
+            <button
+              key={value}
+              onClick={() => setStatusFilter(value)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                statusFilter === value
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+              {count > 0 && (
+                <span className={`text-xs rounded-full px-1.5 py-0.5 ${
+                  statusFilter === value ? "bg-white/30 text-white" : "bg-muted text-muted-foreground"
+                }`}>{count}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Prescriptions list */}
-      {prescriptions.length === 0 ? (
+      {displayedPrescriptions.length === 0 ? (
         <div className="rounded-2xl border border-border bg-white shadow-sm">
           <div className="py-16 flex flex-col items-center gap-3 text-center">
             <div className="h-16 w-16 rounded-full bg-accent flex items-center justify-center">
@@ -211,7 +234,7 @@ const PatientPrescriptions = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {prescriptions.map((rx) => (
+          {displayedPrescriptions.map((rx) => (
             <div key={rx._id} className="rounded-2xl border border-border bg-white shadow-sm hover:shadow-md transition-shadow">
               {/* Top stripe by status */}
               <div className={`h-1 rounded-t-2xl ${rx.status === 'cancelled' ? 'bg-destructive' : rx.status === 'picked_up' ? 'bg-secondary' : 'bg-primary'}`} />
@@ -272,8 +295,18 @@ const PatientPrescriptions = () => {
                     {rx.status === 'issued' && !rx.pickedUpAt && !isExpired(rx.validUntil) && (
                       <Button size="sm" variant="outline" className="text-xs" onClick={() => handlePickupPrescription(rx._id)}>Picked Up</Button>
                     )}
-                    <Button size="sm" variant="ghost" className="text-xs" onClick={() => window.print()}>
-                      <Download className="h-3.5 w-3.5" />
+                    <Button
+                      size="sm" variant="ghost" className="text-xs"
+                      title={rx.medications.length > 0 ? "Print prescription" : "No medications to print"}
+                      onClick={() => {
+                        if (rx.medications.length > 0) {
+                          navigate(`/prescriptions/${rx._id}`);
+                        } else {
+                          navigate("/patient/dashboard");
+                        }
+                      }}
+                    >
+                      <Printer className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -371,8 +404,15 @@ const PatientPrescriptions = () => {
                 {selectedPrescription.status === 'issued' && !selectedPrescription.pickedUpAt && !isExpired(selectedPrescription.validUntil) && (
                   <Button onClick={() => handlePickupPrescription(selectedPrescription._id)}>Mark Picked Up</Button>
                 )}
-                <Button variant="outline" onClick={() => { window.print(); setSelectedPrescription(null); }}>
-                  <Download className="h-4 w-4 mr-2" /> Print / Download
+                <Button variant="outline" onClick={() => {
+                  setSelectedPrescription(null);
+                  if (selectedPrescription.medications.length > 0) {
+                    navigate(`/prescriptions/${selectedPrescription._id}`);
+                  } else {
+                    navigate("/patient/dashboard");
+                  }
+                }}>
+                  <Printer className="h-4 w-4 mr-2" /> View &amp; Print
                 </Button>
                 <Button variant="ghost" onClick={() => setSelectedPrescription(null)}>Close</Button>
               </div>

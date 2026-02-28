@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useClinic } from "@/contexts/ClinicContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,7 @@ import { AlertTriangle, AlertCircle, CheckCircle2, XCircle, Bell, RefreshCw, Cal
 import api from "@/services/api";
 
 const AdminAppointments = () => {
-  const { cancelAppointment, getPrescriptionByAppointment } = useClinic();
+  const { cancelAppointment } = useClinic();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -46,47 +45,47 @@ const AdminAppointments = () => {
     return map[s] || s;
   };
 
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get('/admin/appointments?limit=200');
-        if (res.data?.success) {
-          const appointmentsData = (res.data.appointments || []).map((apt: any) => ({
-            _id: apt._id,
-            id: apt._id,
-            patientName: apt.patientId?.name || 'Unknown Patient',
-            patientId: apt.patientId?._id || apt.patientId || '',
-            doctorId: apt.doctorId?._id || apt.doctorId || '',
-            doctorName: apt.doctorId?.name || 'Unknown Doctor',
-            specialization: apt.doctorId?.specialization || 'N/A',
-            date: apt.date || new Date().toISOString().split('T')[0],
-            time: apt.time || '00:00',
-            status: mapDbStatus(apt.status || 'pending'),
-            reason: apt.cancellationReason || '',
-            prescriptionGiven: apt.prescriptionGiven || false,
-            prescription: apt.prescriptionId,
-          }));
-          setAppointments(appointmentsData);
-        } else {
-          console.warn("Unexpected response format");
-          setAppointments([]);
-        }
-      } catch (error: any) {
-        console.error("Error fetching appointments:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load appointments",
-          variant: "destructive",
-        });
+  const fetchAppointments = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/admin/appointments?limit=200');
+      if (res.data?.success) {
+        const appointmentsData = (res.data.appointments || []).map((apt: any) => ({
+          _id: apt._id,
+          id: apt._id,
+          patientName: apt.patientId?.name || 'Unknown Patient',
+          patientId: apt.patientId?._id || apt.patientId || '',
+          doctorId: apt.doctorId?._id || apt.doctorId || '',
+          doctorName: apt.doctorId?.name || 'Unknown Doctor',
+          specialization: apt.doctorId?.specialization || 'N/A',
+          date: apt.date || new Date().toISOString().split('T')[0],
+          time: apt.time || '00:00',
+          status: mapDbStatus(apt.status || 'pending'),
+          reason: apt.cancellationReason || '',
+          prescriptionGiven: apt.prescriptionGiven || false,
+          prescription: apt.prescriptionId,
+        }));
+        setAppointments(appointmentsData);
+      } else {
+        console.warn("Unexpected response format");
         setAppointments([]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error: any) {
+      console.error("Error fetching appointments:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load appointments",
+        variant: "destructive",
+      });
+      setAppointments([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
 
+  useEffect(() => {
     fetchAppointments();
-  }, []);
+  }, [fetchAppointments]);
 
   const filtered = appointments
     .filter((a) => statusFilter === "all" || a.status === statusFilter)
@@ -180,7 +179,7 @@ const AdminAppointments = () => {
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><CalendarDays className="h-6 w-6" /> All Appointments</h1>
             <p className="mt-1 text-blue-100 text-sm">Manage, track, and monitor all appointments in the system</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => window.location.reload()}>
+          <Button variant="outline" size="sm" className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => fetchAppointments()}>
             <RefreshCw className="h-4 w-4" /> Refresh
           </Button>
         </div>
@@ -279,7 +278,9 @@ const AdminAppointments = () => {
               </TableHeader>
               <TableBody>
                 {filtered.map((apt) => {
-                  const rx = getPrescriptionByAppointment(apt.id);
+                  // Use the prescription field populated directly from DB (not ClinicContext which is user-scoped)
+                  const rx = apt.prescription;
+                  const rxId = rx ? (typeof rx === 'object' && rx !== null ? (rx as any)._id : rx) : null;
                   return (
                     <TableRow key={apt.id}>
                       <TableCell className="font-medium">{apt.patientName}</TableCell>
@@ -296,8 +297,8 @@ const AdminAppointments = () => {
                         {apt.status === "Cancelled" && apt.cancelReason ? apt.cancelReason : "—"}
                       </TableCell>
                       <TableCell>
-                        <span className={`text-xs font-medium ${rx ? "text-green-600" : "text-orange-500"}`}>
-                          {rx ? "✓ Given" : "✗ Not Given"}
+                        <span className={`text-xs font-medium ${rxId ? "text-green-600" : "text-orange-500"}`}>
+                          {rxId ? "✓ Given" : "✗ Not Given"}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -326,7 +327,7 @@ const AdminAppointments = () => {
                               Warn
                             </Button>
                           )}
-                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => navigate(`/prescriptions/${apt.id}`)}>
+                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => navigate(rxId ? `/prescriptions/${rxId}` : `/prescriptions/appointment/${apt.id}`)}>
                             Rx
                           </Button>
                         </div>

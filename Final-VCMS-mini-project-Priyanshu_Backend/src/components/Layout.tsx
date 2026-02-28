@@ -111,24 +111,28 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* Right: Notification + Profile */}
           <div className="flex items-center gap-2">
             {/* About Us & Contact Us quick links — visible to all users */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden sm:flex items-center gap-1.5 h-9 px-3 text-muted-foreground hover:text-foreground text-xs font-medium"
-              onClick={() => navigate("/about-us")}
-            >
-              <Info className="h-3.5 w-3.5" />
-              About
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden sm:flex items-center gap-1.5 h-9 px-3 text-muted-foreground hover:text-foreground text-xs font-medium"
-              onClick={() => navigate("/contact")}
-            >
-              <Phone className="h-3.5 w-3.5" />
-              Contact
-            </Button>
+            {(!isAuthenticated || user?.role !== "admin") && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:flex items-center gap-1.5 h-9 px-3 text-muted-foreground hover:text-foreground text-xs font-medium"
+                  onClick={() => navigate("/about-us")}
+                >
+                  <Info className="h-3.5 w-3.5" />
+                  About
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:flex items-center gap-1.5 h-9 px-3 text-muted-foreground hover:text-foreground text-xs font-medium"
+                  onClick={() => navigate("/contact")}
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  Contact
+                </Button>
+              </>
+            )}
             {/* Notification bell for ALL authenticated users */}
             {isAuthenticated && user && (
               <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => navigate("/notifications")}>

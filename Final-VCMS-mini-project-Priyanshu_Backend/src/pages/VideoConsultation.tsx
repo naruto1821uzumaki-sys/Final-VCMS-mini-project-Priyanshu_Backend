@@ -88,7 +88,8 @@ const VideoConsultation = () => {
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream>(new MediaStream());
 
-  const isDoctor = user?.role === "doctor";
+  const normalizedRole = (user?.role || "").toLowerCase();
+  const isDoctor = normalizedRole === "doctor";
 
   // Initialize WebRTC
   useEffect(() => {
@@ -360,16 +361,27 @@ const VideoConsultation = () => {
   const endCall = async () => {
     cleanupCall();
 
-    // Update appointment status
+    // Mark appointment as completed for all roles when ending the call
     try {
       if (appointmentId) {
-        await api.post(`/appointments/${appointmentId}/complete`, {});
+        await api.put(`/appointments/${appointmentId}/status`, { status: "completed" });
       }
     } catch (error) {
       console.error("Failed to update appointment:", error);
     }
 
-    navigate(isDoctor ? "/doctor/today" : "/patient/appointments");
+    // Use replace:true so user can't press Back and re-enter the video page
+    if (isDoctor) {
+      navigate("/doctor/today", { replace: true });
+      return;
+    }
+
+    if (normalizedRole === "patient") {
+      navigate("/patient/appointments", { replace: true });
+      return;
+    }
+
+    navigate("/", { replace: true });
   };
 
   const cleanupCall = () => {

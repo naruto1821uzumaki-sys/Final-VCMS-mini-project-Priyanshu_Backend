@@ -164,14 +164,33 @@ const DoctorTodayAppointments = () => {
                 )}
 
                 {apt.status === "In Progress" && (
-                  <Button size="sm" onClick={() => navigate(`/video/${apt.id}`)} className="gap-1">
-                    <Video className="h-3 w-3" /> Rejoin Video
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" onClick={() => navigate(`/video/${apt.id}`)} className="gap-1">
+                      <Video className="h-3 w-3" /> Rejoin Video
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateAppointmentStatus(apt.id, "Completed")} className="gap-1">
+                      <CheckCircle className="h-3 w-3" /> Complete
+                    </Button>
+                  </div>
                 )}
 
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/prescriptions/${apt.id}`)}>
-                  {rx ? "View Prescription" : "View Rx"}
-                </Button>
+                {apt.status === "Completed" && (
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" variant="outline" className="gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                      onClick={() => navigate(`/create-prescription/${apt.id}`)}>  
+                      <CheckCircle className="h-3 w-3" /> {rx ? "Edit Prescription" : "Write Prescription"}
+                    </Button>
+                    {rx && (
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/prescriptions/${rx._id || apt.id}`)}>View Rx</Button>
+                    )}
+                  </div>
+                )}
+
+                {apt.status !== "Cancelled" && apt.status !== "Completed" && (
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/prescriptions/${apt.id}`)}>
+                    {rx ? "View Prescription" : "View Rx"}
+                  </Button>
+                )}
 
                 {apt.status === "Cancelled" && apt.cancelReason && (
                   <p className="text-xs text-destructive">Reason: {apt.cancelReason}</p>

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { 
   CalendarDays, Clock, FileText, Activity, IndianRupee, Stethoscope, 
   MapPin, Search, Video, Grid, List, Calendar as CalendarIcon, CheckCircle, XCircle, AlertCircle,
-  ClipboardList, ScanLine, Pill, ChevronRight, Sparkles, X
+  ClipboardList, ScanLine, Pill, ChevronRight, Sparkles, X, type LucideIcon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -366,78 +366,87 @@ const PatientDashboard = () => {
 
   // Get status badge
   const getStatusBadge = (status: string) => {
-    const config = {
-      "Booked": { variant: "outline" as const, icon: AlertCircle, color: "text-primary" },
-      "Accepted": { variant: "default" as const, icon: CheckCircle, color: "text-secondary" },
-      "Completed": { variant: "secondary" as const, icon: CheckCircle, color: "text-gray-600" },
-      "Cancelled": { variant: "destructive" as const, icon: XCircle, color: "text-red-600" },
+    const config: Record<string, { bg: string; text: string; dot: string; icon: LucideIcon }> = {
+      "Booked":      { bg: "bg-amber-50 border border-amber-200",    text: "text-amber-700",  dot: "bg-amber-400",  icon: AlertCircle },
+      "Accepted":    { bg: "bg-emerald-50 border border-emerald-200",text: "text-emerald-700",dot: "bg-emerald-500",icon: CheckCircle },
+      "In Progress": { bg: "bg-blue-50 border border-blue-200",      text: "text-blue-700",   dot: "bg-blue-500",   icon: Activity },
+      "Completed":   { bg: "bg-slate-50 border border-slate-200",    text: "text-slate-600",  dot: "bg-slate-400",  icon: CheckCircle },
+      "Cancelled":   { bg: "bg-red-50 border border-red-200",        text: "text-red-600",    dot: "bg-red-400",    icon: XCircle },
     };
-    const { variant, icon: Icon, color } = config[status as keyof typeof config] || config["Booked"];
-    
+    const c = config[status] || config["Booked"];
     return (
-      <Badge variant={variant} className="flex items-center gap-1">
-        <Icon className={`h-3 w-3 ${color}`} />
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${c.dot} flex-shrink-0`} />
         {status}
-      </Badge>
+      </span>
     );
   };
 
+  // Avatar color palette for doctors
+  const AVATAR_COLORS = [
+    "from-violet-500 to-purple-600",
+    "from-blue-500 to-indigo-600",
+    "from-emerald-500 to-teal-600",
+    "from-rose-500 to-pink-600",
+    "from-amber-500 to-orange-600",
+    "from-cyan-500 to-sky-600",
+  ];
+  const getDoctorAvatarColor = (name: string) => {
+    const idx = name ? name.charCodeAt(0) % AVATAR_COLORS.length : 0;
+    return AVATAR_COLORS[idx];
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/5 p-4 md:p-7 space-y-5">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 px-6 py-5 shadow-lg border border-primary/20">
-        <div className="absolute -top-4 -right-4 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-8 -left-4 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center gap-3">
+    <div className="min-h-screen bg-slate-50/60 p-4 md:p-6 space-y-6">
+
+      {/* ── Hero Header ─────────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="h-1 w-full bg-primary" />
+        <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-5">
           <div className="flex-1">
-            <p className="text-primary-foreground/90 text-base font-medium mb-1">Welcome back 👋</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground leading-tight">
-              {user?.name || 'Patient'}
+            <p className="text-[11px] font-bold text-primary/70 uppercase tracking-widest mb-1">Patient Portal</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
+              Hello, {user?.name?.split(" ")[0] || "there"} 👋
             </h1>
-            <p className="text-primary-foreground/70 mt-1.5 text-sm">Manage your health journey from one place.</p>
+            <p className="text-slate-500 mt-1 text-sm">Book appointments, view records and manage your health.</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <div className="bg-orange-400 border-2 border-orange-300 rounded-xl px-4 py-3 text-center min-w-[76px] shadow-md">
-              <p className="text-xl font-extrabold text-white">{upcomingAppointments.length}</p>
-              <p className="text-white text-xs font-semibold mt-0.5">Upcoming</p>
-            </div>
-            <div className="bg-emerald-500 border-2 border-emerald-300 rounded-xl px-4 py-3 text-center min-w-[76px] shadow-md">
-              <p className="text-xl font-extrabold text-white">{pastAppointments.length}</p>
-              <p className="text-emerald-100 text-xs font-semibold mt-0.5">Completed</p>
-            </div>
-            <div className="bg-sky-500 border-2 border-sky-300 rounded-xl px-4 py-3 text-center min-w-[76px] shadow-md">
-              <p className="text-xl font-extrabold text-white">{doctors.length}</p>
-              <p className="text-sky-100 text-xs font-semibold mt-0.5">Doctors</p>
-            </div>
+          <div className="flex gap-3 flex-wrap">
+            {[
+              { label: "Upcoming",  value: upcomingAppointments.length, color: "text-blue-600",    bg: "bg-blue-50 border-blue-100",    icon: CalendarDays },
+              { label: "Completed", value: pastAppointments.length,     color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", icon: CheckCircle },
+              { label: "Doctors",   value: doctors.length,              color: "text-violet-600",  bg: "bg-violet-50 border-violet-100",  icon: Stethoscope },
+            ].map(({ label, value, color, bg, icon: Icon }) => (
+              <div key={label} className={`${bg} border rounded-xl px-4 py-3 text-center min-w-[76px]`}>
+                <Icon className={`h-4 w-4 ${color} mx-auto mb-1`} />
+                <p className={`text-xl font-black ${color} leading-none`}>{value}</p>
+                <p className="text-slate-500 text-[11px] font-medium mt-0.5">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Quick Access Section */}
+      {/* ── Quick Access Cards ───────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           {
             icon: ClipboardList,
             title: "Medical History",
-            desc: "View and add your past records",
+            desc: "View and manage your past records",
             cta: "Open Records",
             path: "/patient/medical-history",
-            cardBg: "bg-gradient-to-br from-primary/8 via-white to-white",
-            iconBg: "bg-primary/10",
-            iconColor: "text-primary",
-            border: "border-l-4 border-l-primary",
-            ctaColor: "text-primary",
+            iconBg: "bg-blue-50",
+            iconColor: "text-blue-600",
+            ctaColor: "text-blue-600",
           },
           {
             icon: ScanLine,
             title: "AI Report Analyzer",
-            desc: "Upload report — get clear AI summary",
+            desc: "Upload a report — get AI insights",
             cta: "Analyse a Report",
             path: "/patient/ai-analyzer",
-            cardBg: "bg-gradient-to-br from-violet-50 via-white to-white",
             iconBg: "bg-violet-50",
             iconColor: "text-violet-600",
-            border: "border-l-4 border-l-violet-500",
             ctaColor: "text-violet-600",
           },
           {
@@ -446,109 +455,105 @@ const PatientDashboard = () => {
             desc: "View prescriptions with AI summaries",
             cta: "View Prescriptions",
             path: "/patient/prescriptions",
-            cardBg: "bg-gradient-to-br from-secondary/8 via-white to-white",
-            iconBg: "bg-secondary/10",
-            iconColor: "text-secondary",
-            border: "border-l-4 border-l-secondary",
-            ctaColor: "text-secondary",
+            iconBg: "bg-emerald-50",
+            iconColor: "text-emerald-600",
+            ctaColor: "text-emerald-600",
           },
         ].map((card) => (
           <div
             key={card.path}
-            className={`rounded-2xl border border-border ${card.border} ${card.cardBg} shadow-sm cursor-pointer group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden`}
+            className="rounded-2xl border border-slate-200 bg-white hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group p-5 flex items-start gap-4"
             onClick={() => navigate(card.path)}
           >
-            <div className="p-5 flex flex-col gap-3">
-              <div className={`h-11 w-11 rounded-xl ${card.iconBg} flex items-center justify-center`}>
-                <card.icon className={`h-5 w-5 ${card.iconColor}`} />
-              </div>
-              <div>
-                <p className="font-bold text-foreground text-sm">{card.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{card.desc}</p>
-              </div>
-              <div className={`flex items-center gap-1 text-xs font-semibold ${card.ctaColor} group-hover:gap-2 transition-all mt-auto`}>
-                {card.cta} <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+            <div className={`h-11 w-11 rounded-xl ${card.iconBg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
+              <card.icon className={`h-5 w-5 ${card.iconColor}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-slate-800 text-sm">{card.title}</p>
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{card.desc}</p>
+              <div className={`flex items-center gap-1 text-xs font-semibold ${card.ctaColor} mt-2 group-hover:gap-2 transition-all`}>
+                {card.cta} <ChevronRight className="h-3.5 w-3.5" />
               </div>
             </div>
           </div>
         ))}
+
       </div>
 
-      {/* Find Doctors Section */}
-      <div className="rounded-2xl overflow-hidden shadow-sm border border-border bg-white">
+      {/* ── Find Doctors ─────────────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
 
         {/* Section Header */}
-        <div className="px-6 py-4 flex items-center justify-between border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Search className="h-4 w-4 text-primary" />
+        <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <Search className="h-4 w-4 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-foreground font-bold text-base leading-none">Find Doctors</h2>
-              <p className="text-gray-600 text-sm font-medium mt-0.5">Search by symptom, name, specialization, or location</p>
+              <h2 className="text-slate-800 font-bold text-sm leading-none">Find Doctors</h2>
+              <p className="text-slate-500 text-xs mt-0.5">Search by symptom, name, specialization or location</p>
             </div>
           </div>
           {(filterName || filterSpec || filterLocation || selectedSymptoms.length > 0) && (
             <button
               onClick={clearFilters}
-              className="text-sm font-bold text-white bg-red-500 hover:bg-red-600 active:bg-red-700 px-4 py-2 rounded-xl border-2 border-red-400 shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+              className="text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl border border-red-200 transition-all flex items-center gap-1.5"
             >
-              <X className="h-4 w-4" /> Clear Filters
+              <X className="h-3.5 w-3.5" /> Clear Filters
             </button>
           )}
         </div>
 
-        <div className="p-5 space-y-6">
+        <div className="p-6 space-y-6">
 
-          {/* Symptom Cards */}
+          {/* Symptom Pills */}
           <div>
-            <p className="text-xs font-extrabold text-gray-700 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-              <span className="h-1.5 w-4 bg-primary rounded-full inline-block" />
-              Quick find by symptom
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
+              Quick select by symptom
             </p>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="flex flex-wrap gap-2">
               {SYMPTOM_CARDS.map((card) => {
                 const active = selectedSymptoms.includes(card.name);
                 return (
                   <button
                     key={card.name}
                     onClick={() => handleSymptomClick(card.name)}
-                    className={`flex flex-col items-center justify-center gap-1.5 py-5 px-2 rounded-xl border-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${
                       active
-                        ? `${card.activeBg} border-primary shadow-sm -translate-y-0.5`
-                        : `${card.bg} border-primary/50 hover:border-primary/80`
+                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50"
                     }`}
                   >
-                    <span className="text-2xl leading-none">{card.icon}</span>
-                    <span className={`text-[11px] font-bold text-center leading-tight ${
-                      active ? card.label : "text-gray-700"
-                    }`}>
-                      {card.name}
-                    </span>
+                    <span className="text-base leading-none">{card.icon}</span>
+                    <span>{card.name}</span>
+                    {active && <span className="h-1.5 w-1.5 rounded-full bg-white/80 ml-0.5" />}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Search + Specialization — 3 labeled cards */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Search Filters Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Doctor Name */}
-            <div className="group relative rounded-xl border-2 border-primary/40 bg-white px-4 pt-3 pb-3 hover:border-primary/70 focus-within:border-primary transition-colors shadow-sm">
-              <label className="flex items-center gap-1 text-xs font-extrabold text-gray-700 uppercase tracking-wider mb-1">
-                <Search className="h-3 w-3" /> Doctor Name
+            <div className="relative group">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 pl-1">
+                Doctor Name
               </label>
-              <input
-                placeholder="Search by name..."
-                value={filterName}
-                onChange={(e) => { setFilterName(e.target.value); setShowNameSuggestions(e.target.value.length > 0); }}
-                onFocus={() => setShowNameSuggestions(filterName.length > 0)}
-                className="w-full text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none bg-transparent"
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <input
+                  placeholder="Search by name..."
+                  value={filterName}
+                  onChange={(e) => { setFilterName(e.target.value); setShowNameSuggestions(e.target.value.length > 0); }}
+                  onFocus={() => setShowNameSuggestions(filterName.length > 0)}
+                  className="w-full h-10 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 rounded-xl border-2 border-slate-200 bg-white focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
+                />
+              </div>
               {showNameSuggestions && nameSuggestions.length > 0 && (
-                <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg max-h-40 overflow-auto">
+                <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-40 overflow-auto">
                   {nameSuggestions.map((name) => (
-                    <button key={name} className="w-full text-left px-3 py-2 hover:bg-accent text-sm" onClick={() => { setFilterName(name); setShowNameSuggestions(false); }}>
+                    <button key={name} className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm text-slate-700 transition-colors" onClick={() => { setFilterName(name); setShowNameSuggestions(false); }}>
                       {name}
                     </button>
                   ))}
@@ -557,112 +562,115 @@ const PatientDashboard = () => {
             </div>
 
             {/* Location */}
-            <div className="rounded-xl border-2 border-primary/40 bg-white px-4 pt-3 pb-3 hover:border-primary/70 focus-within:border-primary transition-colors shadow-sm">
-              <label className="flex items-center gap-1 text-xs font-extrabold text-gray-700 uppercase tracking-wider mb-1">
-                <MapPin className="h-3 w-3" /> Location
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 pl-1">
+                Location
               </label>
-              <input
-                placeholder="City or area..."
-                value={filterLocation}
-                onChange={(e) => setFilterLocation(e.target.value)}
-                className="w-full text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none bg-transparent"
-              />
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <input
+                  placeholder="City or area..."
+                  value={filterLocation}
+                  onChange={(e) => setFilterLocation(e.target.value)}
+                  className="w-full h-10 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 rounded-xl border-2 border-slate-200 bg-white focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
+                />
+              </div>
             </div>
 
             {/* Specialization */}
-            <div className="relative rounded-xl border-2 border-primary/40 bg-white px-4 pt-3 pb-3 hover:border-primary/70 focus-within:border-primary transition-colors shadow-sm">
-              <label className="flex items-center gap-1 text-xs font-extrabold text-gray-700 uppercase tracking-wider mb-1">
-                <Stethoscope className="h-3 w-3" /> Specialization
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 pl-1">
+                Specialization
               </label>
-              <select
-                value={filterSpec}
-                onChange={(e) => setFilterSpec(e.target.value)}
-                className="w-full text-sm text-foreground focus:outline-none appearance-none cursor-pointer bg-transparent pr-5"
-              >
-                <option value="*">All Specializations</option>
-                {specializations.map((spec) => (
-                  <option key={spec} value={spec}>{spec}</option>
-                ))}
-              </select>
-              <span className="absolute right-3 bottom-2.5 pointer-events-none text-muted-foreground text-xs">▾</span>
+              <div className="relative">
+                <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <select
+                  value={filterSpec}
+                  onChange={(e) => setFilterSpec(e.target.value)}
+                  className="w-full h-10 pl-9 pr-8 text-sm text-slate-800 rounded-xl border-2 border-slate-200 bg-white focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="*">All Specializations</option>
+                  {specializations.map((spec) => (
+                    <option key={spec} value={spec}>{spec}</option>
+                  ))}
+                </select>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">▾</span>
+              </div>
             </div>
           </div>
 
-          {/* Results count + view toggle */}
-          <div className="flex items-center justify-between pt-1 border-t border-border">
+          {/* Results bar */}
+          <div className="flex items-center justify-between">
             {selectedSymptoms.length === 0 && !filterName.trim() && !filterSpec && !filterLocation.trim() ? (
-              <p className="text-base font-bold text-gray-800 tracking-tight">🔍 Select a symptom or filter to find doctors</p>
+              <p className="text-sm font-medium text-slate-500">Select a symptom or use filters to discover doctors</p>
             ) : (
-              <p className="text-sm font-medium text-muted-foreground">
-                {loadingDoctors ? "Searching..." : (
-                  <span>{filteredDoctors.length > 0 ? <span className="text-primary font-semibold">{filteredDoctors.length}</span> : "0"} doctor{filteredDoctors.length !== 1 ? "s" : ""} found</span>
+              <p className="text-sm text-slate-500">
+                {loadingDoctors ? (
+                  <span className="flex items-center gap-2"><span className="h-3 w-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin inline-block" />Searching...</span>
+                ) : (
+                  <><span className="text-indigo-600 font-bold text-base">{filteredDoctors.length}</span> doctor{filteredDoctors.length !== 1 ? "s" : ""} found</>
                 )}
               </p>
             )}
-            <div className="flex gap-0.5 bg-muted/40 border border-border rounded-xl p-0.5">
+            <div className="flex gap-0.5 bg-slate-100 border border-slate-200 rounded-xl p-0.5">
               <button
                 onClick={() => setViewMode("card")}
-                className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${
-                  viewMode === "card" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
-                }`}
+                className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${viewMode === "card" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
               >
                 <Grid className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setViewMode("table")}
-                className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${
-                  viewMode === "table" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
-                }`}
+                className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${viewMode === "table" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
               >
                 <List className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
 
-          {/* Doctors Display - Card View */}
+          {/* Doctors — Card View */}
           {viewMode === "card" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {loadingDoctors ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <Card key={i} className="animate-pulse border border-border shadow-sm">
-                    <CardContent className="pt-6 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-xl bg-gray-200" />
-                        <div className="space-y-2 flex-1">
-                          <div className="h-4 bg-gray-200 rounded w-3/4" />
-                          <div className="h-3 bg-gray-200 rounded w-1/2" />
-                        </div>
-                      </div>
-                      <div className="h-3 bg-gray-200 rounded w-2/3" />
-                      <div className="h-9 bg-gray-200 rounded-lg" />
-                    </CardContent>
-                  </Card>
-                ))
-              ) : selectedSymptoms.length === 0 && !filterName.trim() && !filterSpec && !filterLocation.trim() ? (
-                // Beautiful empty state when no filters
-                <div className="col-span-full">
-                  <div className="flex flex-col items-center justify-center py-16 px-6 rounded-2xl bg-accent/30 border border-border">
-                    <div className="relative mb-5">
-                      <div className="h-20 w-20 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                        <Stethoscope className="h-10 w-10 text-white" />
-                      </div>
-                      <div className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-amber-400 flex items-center justify-center shadow">
-                        <Search className="h-3 w-3 text-white" />
+                  <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-14 w-14 rounded-2xl bg-slate-200" />
+                      <div className="space-y-2 flex-1">
+                        <div className="h-4 bg-slate-200 rounded-lg w-3/4" />
+                        <div className="h-3 bg-slate-200 rounded-lg w-1/2" />
                       </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Find Your Doctor</h3>
-                    <p className="text-sm text-muted-foreground text-center max-w-xs mb-5">
-                      Select a symptom above, choose a specialization, or search by name to discover available doctors.
+                    <div className="space-y-2">
+                      <div className="h-3 bg-slate-200 rounded-lg w-2/3" />
+                      <div className="h-3 bg-slate-200 rounded-lg w-1/2" />
+                    </div>
+                    <div className="h-9 bg-slate-200 rounded-xl" />
+                  </div>
+                ))
+              ) : selectedSymptoms.length === 0 && !filterName.trim() && !filterSpec && !filterLocation.trim() ? (
+                <div className="col-span-full">
+                  <div className="flex flex-col items-center justify-center py-16 px-6 rounded-2xl bg-gradient-to-b from-indigo-50/60 to-slate-50 border border-dashed border-indigo-200">
+                    <div className="relative mb-6">
+                      <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-xl shadow-indigo-300/40">
+                        <Stethoscope className="h-10 w-10 text-white" />
+                      </div>
+                      <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-amber-400 flex items-center justify-center shadow-md">
+                        <Search className="h-4 w-4 text-white" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700 mb-1.5">Find Your Doctor</h3>
+                    <p className="text-sm text-slate-500 text-center max-w-xs mb-6 leading-relaxed">
+                      Pick a symptom below or use the search filters to discover available doctors.
                     </p>
-                    <div className="grid grid-cols-4 gap-3 w-full max-w-sm">
-                      {SYMPTOM_CARDS.slice(0, 4).map((s) => (
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {SYMPTOM_CARDS.slice(0, 5).map((s) => (
                         <button
                           key={s.name}
                           onClick={() => handleSymptomClick(s.name)}
-                          className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border-2 border-border bg-white hover:border-primary/40 hover:bg-accent/50 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 shadow-sm"
+                          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 border-slate-200 bg-white text-sm font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200"
                         >
-                          <span className="text-2xl leading-none">{s.icon}</span>
-                          <span className="text-xs font-semibold text-primary text-center leading-tight">{s.name}</span>
+                          <span>{s.icon}</span><span>{s.name}</span>
                         </button>
                       ))}
                     </div>
@@ -670,97 +678,100 @@ const PatientDashboard = () => {
                 </div>
               ) : filteredDoctors.length === 0 ? (
                 <div className="col-span-full">
-                  <div className="flex flex-col items-center justify-center py-14 px-6 rounded-2xl bg-gray-50 border border-dashed border-gray-200">
-                    <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                      <Search className="h-8 w-8 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center py-14 px-6 rounded-2xl bg-slate-50 border border-dashed border-slate-200">
+                    <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                      <Search className="h-7 w-7 text-slate-400" />
                     </div>
-                    <h3 className="font-semibold text-gray-700 mb-1">No doctors found</h3>
-                    <p className="text-sm text-muted-foreground text-center mb-4">Try different symptoms or adjust your filters.</p>
-                    <Button variant="outline" size="sm" onClick={clearFilters}>Clear all filters</Button>
+                    <h3 className="font-semibold text-slate-700 mb-1">No doctors found</h3>
+                    <p className="text-sm text-slate-500 text-center mb-4">Try different symptoms or adjust your filters.</p>
+                    <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-xl">Clear all filters</Button>
                   </div>
                 </div>
               ) : (
-                filteredDoctors.map((doc) => (
-                  <Card key={doc._id} className="group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-border shadow-sm overflow-hidden">
-                    <CardContent className="p-5">
-                      <div className="flex items-start gap-3 mb-4">
-                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Stethoscope className="h-6 w-6 text-primary" />
+                filteredDoctors.map((doc) => {
+                  const avatarGradient = getDoctorAvatarColor(doc.name || "");
+                  const initials = (doc.name || "?").slice(0, 2).toUpperCase();
+                  return (
+                    <div key={doc._id} className="group rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:shadow-slate-200/80 hover:-translate-y-1 transition-all duration-200 overflow-hidden flex flex-col">
+                      {/* Card top accent */}
+                      <div className={`h-1 w-full bg-gradient-to-r ${avatarGradient}`} />
+                      <div className="p-5 flex flex-col flex-1">
+                        <div className="flex items-start gap-3 mb-4">
+                          <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center flex-shrink-0 shadow-md`}>
+                            <span className="text-white font-bold text-lg">{initials}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-slate-800 truncate">Dr. {doc.name}</h3>
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mt-1">{doc.specialization}</span>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">Dr. {doc.name}</h3>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary mt-0.5">{doc.specialization}</span>
+                        <div className="space-y-2 text-sm text-slate-500 mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                              <MapPin className="h-3 w-3 text-slate-400" />
+                            </div>
+                            <span className="truncate">{formatLocation(doc.location)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                              <Activity className="h-3 w-3 text-slate-400" />
+                            </div>
+                            <span>{doc.experience || 5} yrs experience</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
+                          <div className="flex items-baseline gap-0.5">
+                            <span className="text-xs text-slate-400 mr-0.5">₹</span>
+                            <span className="font-black text-xl text-slate-800">{doc.consultationFee || 500}</span>
+                            <span className="text-xs text-slate-400 ml-0.5">/visit</span>
+                          </div>
+                          <Button size="sm" className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm shadow-indigo-200 px-4" onClick={() => openBooking(doc)}>
+                            Book Now
+                          </Button>
                         </div>
                       </div>
-                      <div className="space-y-1.5 text-sm text-muted-foreground mb-4">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                          <span className="truncate">{formatLocation(doc.location)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Activity className="h-3.5 w-3.5 flex-shrink-0" />
-                          <span>{doc.experience || 5} yrs experience</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <IndianRupee className="h-4 w-4 text-secondary" />
-                          <span className="font-bold text-base text-gray-900">{doc.consultationFee || 500}</span>
-                          <span className="text-xs text-muted-foreground">/visit</span>
-                        </div>
-                        <Button size="sm" className="rounded-lg" onClick={() => openBooking(doc)}>
-                          Book Now
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
 
-          {/* Doctors Display - Table View */}
+          {/* Doctors — Table View */}
           {viewMode === "table" && (
-            <div className="border rounded-lg">
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Doctor</TableHead>
-                    <TableHead>Specialization</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Experience</TableHead>
-                    <TableHead>Fee</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="font-bold text-slate-600">Doctor</TableHead>
+                    <TableHead className="font-bold text-slate-600">Specialization</TableHead>
+                    <TableHead className="font-bold text-slate-600">Location</TableHead>
+                    <TableHead className="font-bold text-slate-600">Experience</TableHead>
+                    <TableHead className="font-bold text-slate-600">Fee</TableHead>
+                    <TableHead className="text-right font-bold text-slate-600">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingDoctors ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        Loading doctors...
-                      </TableCell>
+                      <TableCell colSpan={6} className="text-center py-8 text-slate-500">Loading doctors...</TableCell>
                     </TableRow>
                   ) : filteredDoctors.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        No doctors found. Try adjusting your filters.
-                      </TableCell>
+                      <TableCell colSpan={6} className="text-center py-8 text-slate-500">No doctors found. Try adjusting your filters.</TableCell>
                     </TableRow>
                   ) : (
                     filteredDoctors.map((doc) => (
-                      <TableRow key={doc._id}>
-                        <TableCell className="font-medium">Dr. {doc.name}</TableCell>
-                        <TableCell>{doc.specialization}</TableCell>
-                        <TableCell>{formatLocation(doc.location)}</TableCell>
-                        <TableCell>{doc.experience || 5} years</TableCell>
-                        <TableCell>₹{doc.consultationFee || 500}</TableCell>
+                      <TableRow key={doc._id} className="hover:bg-slate-50/80 transition-colors">
+                        <TableCell className="font-semibold text-slate-800">Dr. {doc.name}</TableCell>
+                        <TableCell>
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">{doc.specialization}</span>
+                        </TableCell>
+                        <TableCell className="text-slate-600">{formatLocation(doc.location)}</TableCell>
+                        <TableCell className="text-slate-600">{doc.experience || 5} yrs</TableCell>
+                        <TableCell className="font-bold text-slate-800">₹{doc.consultationFee || 500}</TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            onClick={() => openBooking(doc)}
-                          >
-                            Book
-                          </Button>
+                          <Button size="sm" onClick={() => openBooking(doc)} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white">Book</Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -772,147 +783,165 @@ const PatientDashboard = () => {
         </div>
       </div>
 
-      {/* My Appointments Section */}
-      <div className="rounded-2xl overflow-hidden shadow-sm border border-border bg-white">
-        <div className="px-6 py-4 flex items-center gap-3 border-b border-border bg-muted/40">
-          <div className="h-8 w-8 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
-            <CalendarDays className="h-4 w-4 text-secondary" />
+      {/* ── My Appointments ──────────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+        {/* Section Header */}
+        <div className="px-6 py-4 flex items-center gap-3 border-b border-slate-100">
+          <div className="h-9 w-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+            <CalendarDays className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="flex-1">
-            <h2 className="text-foreground font-bold text-base leading-none">My Appointments</h2>
-            <p className="text-muted-foreground text-xs mt-0.5">Track and manage your appointments</p>
+          <div>
+            <h2 className="text-slate-800 font-bold text-sm leading-none">My Appointments</h2>
+            <p className="text-slate-500 text-xs mt-0.5">Track and manage all your appointments</p>
           </div>
         </div>
-        <div className="bg-white p-5 space-y-4">
+
+        <div className="p-6 space-y-5">
           {/* Tabs */}
-          <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-fit">
-            <button
-              onClick={() => setAppointmentTab("upcoming")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                appointmentTab === "upcoming"
-                  ? "bg-white shadow-sm text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Upcoming <span className="ml-1 text-xs">({upcomingAppointments.length})</span>
-            </button>
-            <button
-              onClick={() => setAppointmentTab("past")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                appointmentTab === "past"
-                  ? "bg-white shadow-sm text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Completed <span className="ml-1 text-xs">({pastAppointments.length})</span>
-            </button>
-            <button
-              onClick={() => setAppointmentTab("cancelled")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                appointmentTab === "cancelled"
-                  ? "bg-white shadow-sm text-red-600"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Cancelled <span className="ml-1 text-xs">({cancelledAppointments.length})</span>
-            </button>
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-fit">
+            {[
+              { key: "upcoming",  label: "Upcoming",  count: upcomingAppointments.length,  activeClass: "bg-white text-indigo-600 shadow-sm" },
+              { key: "past",      label: "Completed", count: pastAppointments.length,       activeClass: "bg-white text-emerald-600 shadow-sm" },
+              { key: "cancelled", label: "Cancelled", count: cancelledAppointments.length,  activeClass: "bg-white text-red-500 shadow-sm" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setAppointmentTab(tab.key as typeof appointmentTab)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  appointmentTab === tab.key ? tab.activeClass : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {tab.label}
+                <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+                  appointmentTab === tab.key ? "bg-slate-100 text-slate-600" : "bg-slate-200/70 text-slate-500"
+                }`}>{tab.count}</span>
+              </button>
+            ))}
           </div>
 
           {/* Appointments List */}
-          <div className="space-y-4">
+          <div className="space-y-3">
+
             {/* Empty states */}
             {appointmentTab === "upcoming" && upcomingAppointments.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl bg-primary/5 border border-dashed border-primary/30">
-                <CalendarDays className="h-10 w-10 text-primary/40 mb-3" />
-                <p className="font-medium text-gray-600">No upcoming appointments</p>
-                <p className="text-sm text-muted-foreground mt-1">Use "Find Doctors" above to book one.</p>
+              <div className="flex flex-col items-center justify-center py-14 text-center rounded-2xl bg-gradient-to-b from-indigo-50/50 to-slate-50 border border-dashed border-indigo-200">
+                <div className="h-14 w-14 rounded-2xl bg-indigo-100 flex items-center justify-center mb-4">
+                  <CalendarDays className="h-7 w-7 text-indigo-400" />
+                </div>
+                <p className="font-semibold text-slate-700">No upcoming appointments</p>
+                <p className="text-sm text-slate-500 mt-1">Use "Find Doctors" above to book one.</p>
               </div>
             )}
             {appointmentTab === "past" && pastAppointments.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl bg-gray-50 border border-dashed border-gray-200">
-                <CheckCircle className="h-10 w-10 text-gray-300 mb-3" />
-                <p className="font-medium text-gray-600">No completed appointments yet</p>
+              <div className="flex flex-col items-center justify-center py-14 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
+                <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                  <CheckCircle className="h-7 w-7 text-slate-300" />
+                </div>
+                <p className="font-semibold text-slate-600">No completed appointments yet</p>
               </div>
             )}
             {appointmentTab === "cancelled" && cancelledAppointments.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl bg-accent/30 border border-dashed border-border">
-                <XCircle className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="font-medium text-muted-foreground">No cancelled appointments</p>
+              <div className="flex flex-col items-center justify-center py-14 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
+                <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                  <XCircle className="h-7 w-7 text-slate-300" />
+                </div>
+                <p className="font-semibold text-slate-600">No cancelled appointments</p>
               </div>
             )}
 
-            {appointmentTab === "upcoming" && upcomingAppointments.map((apt) => (
-              <div key={apt._id} className="flex items-center gap-4 p-4 rounded-xl border bg-white hover:shadow-sm transition-all">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Stethoscope className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-900">{apt.doctorName}</h3>
-                    {getStatusBadge(apt.status)}
+            {/* Upcoming */}
+            {appointmentTab === "upcoming" && upcomingAppointments.map((apt) => {
+              const isInProgress = apt.status === "In Progress";
+              const borderColor = isInProgress ? "border-l-blue-500" : apt.status === "Accepted" ? "border-l-emerald-500" : "border-l-amber-400";
+              return (
+                <div key={apt._id} className={`flex items-center gap-4 p-4 rounded-2xl border border-slate-200 border-l-4 ${borderColor} bg-white hover:shadow-md hover:shadow-slate-100 transition-all duration-200`}>
+                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm shadow-indigo-200">
+                    <Stethoscope className="h-6 w-6 text-white" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{apt.specialization}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5">
-                    <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" />{apt.date}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{apt.time}</span>
-                    {apt.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{formatLocation(apt.location)}</span>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-slate-800">{apt.doctorName}</h3>
+                      {getStatusBadge(apt.status)}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{apt.specialization}</p>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                        <CalendarIcon className="h-3 w-3" />{apt.date}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                        <Clock className="h-3 w-3" />{apt.time}
+                      </span>
+                      {apt.location && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                          <MapPin className="h-3 w-3" />{formatLocation(apt.location)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    {(apt.status === "Accepted" || apt.status === "In Progress") && (
+                      <Button size="sm" className="rounded-xl text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-200 font-semibold" onClick={() => navigate(`/video/${apt._id}`)}>
+                        <Video className="h-3.5 w-3.5" /> Join Video
+                      </Button>
+                    )}
+                    {(apt.status === "Booked" || apt.status === "Accepted") && (
+                      <Button size="sm" variant="outline" className="rounded-xl text-xs border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-medium" onClick={() => handleCancelAppointment(apt._id)}>
+                        Cancel
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <div className="flex flex-col gap-1 shrink-0">
-                  {(apt.status === "Accepted" || apt.status === "In Progress") && (
-                    <Button size="sm" className="text-xs gap-1" onClick={() => navigate(`/video/${apt._id}`)}>
-                      <Video className="h-3 w-3" /> Join Video
-                    </Button>
-                  )}
-                  {(apt.status === "Booked" || apt.status === "Accepted") && (
-                    <Button size="sm" variant="outline" className="text-xs border-red-300 text-red-600 hover:bg-red-50" onClick={() => handleCancelAppointment(apt._id)}>Cancel</Button>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
+            {/* Completed */}
             {appointmentTab === "past" && pastAppointments.map((apt: any) => (
-              <div key={apt._id} className="flex items-center gap-4 p-4 rounded-xl border bg-white hover:shadow-sm transition-all">
-                <div className="h-12 w-12 rounded-xl bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="h-6 w-6 text-secondary" />
+              <div key={apt._id} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 border-l-4 border-l-teal-500 bg-white hover:shadow-md hover:shadow-slate-100 transition-all duration-200">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-sm shadow-emerald-200">
+                  <CheckCircle className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-900">{apt.doctorName}</h3>
+                    <h3 className="font-bold text-slate-800">{apt.doctorName}</h3>
                     {getStatusBadge(apt.status)}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{apt.specialization}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5">
-                    <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" />{apt.date}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{apt.time}</span>
+                  <p className="text-xs text-slate-500 mt-0.5">{apt.specialization}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                      <CalendarIcon className="h-3 w-3" />{apt.date}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                      <Clock className="h-3 w-3" />{apt.time}
+                    </span>
                   </div>
                 </div>
-                <Button size="sm" variant="outline" className="flex-shrink-0 text-xs"
-                  onClick={async () => {
-                    const prescription = await getPrescriptionByAppointment(apt._id);
-                    if (prescription) { navigate("/patient/prescriptions"); }
-                    else { toast({ title: "No Prescription", description: "Prescription not yet added by doctor" }); }
-                  }}
+                <Button size="sm" variant="outline" className="flex-shrink-0 rounded-xl text-xs border-slate-200 hover:bg-slate-50 font-medium gap-1.5"
+                  onClick={() => navigate(`/prescriptions/appointment/${apt._id}`)}
                 >
-                  <FileText className="h-3.5 w-3.5 mr-1" /> Prescription
+                  <FileText className="h-3.5 w-3.5" /> Prescription
                 </Button>
               </div>
             ))}
 
+            {/* Cancelled */}
             {appointmentTab === "cancelled" && cancelledAppointments.map((apt) => (
-              <div key={apt._id} className="flex items-center gap-4 p-4 rounded-xl border bg-gray-50/50 opacity-70">
-                <div className="h-12 w-12 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
-                  <XCircle className="h-6 w-6 text-red-400" />
+              <div key={apt._id} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 border-l-4 border-l-red-400 bg-red-50/30 opacity-80">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center flex-shrink-0 opacity-80">
+                  <XCircle className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-700">{apt.doctorName}</h3>
+                    <h3 className="font-bold text-slate-700">{apt.doctorName}</h3>
                     {getStatusBadge(apt.status)}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{apt.specialization}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5">
-                    <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" />{apt.date}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{apt.time}</span>
+                  <p className="text-xs text-slate-500 mt-0.5">{apt.specialization}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                      <CalendarIcon className="h-3 w-3" />{apt.date}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                      <Clock className="h-3 w-3" />{apt.time}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -921,48 +950,48 @@ const PatientDashboard = () => {
         </div>
       </div>
 
-      {/* Booking Modal */}
+      {/* ── Booking Modal ────────────────────────────────────────────── */}
       <Dialog open={showBookingModal} onOpenChange={setShowBookingModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Book Appointment</DialogTitle>
-            <DialogDescription>
-              Book an appointment with {selectedDoctor && `Dr. ${selectedDoctor.name}`}
+        <DialogContent className="max-w-lg rounded-3xl border border-slate-200 shadow-2xl shadow-slate-300/40 p-0 overflow-hidden">
+          {/* Modal header */}
+          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-5">
+            <DialogTitle className="text-white font-bold text-lg">Book Appointment</DialogTitle>
+            <DialogDescription className="text-white/70 text-sm mt-0.5">
+              {selectedDoctor ? `Scheduling with Dr. ${selectedDoctor.name}` : "Select your preferred date and time"}
             </DialogDescription>
-          </DialogHeader>
-          
+          </div>
+
           {selectedDoctor && (
-            <div className="space-y-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Stethoscope className="h-8 w-8 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Dr. {selectedDoctor.name}</h3>
-                      <p className="text-sm text-muted-foreground">{selectedDoctor.specialization}</p>
-                      <div className="flex items-center gap-2 text-sm mt-1">
-                        <MapPin className="h-4 w-4" />
-                        {formatLocation(selectedDoctor.location)}
-                      </div>
-                      <p className="text-sm font-semibold mt-1">Fee: ₹{selectedDoctor.consultationFee || 500}</p>
-                    </div>
+            <div className="p-6 space-y-5">
+              {/* Doctor info strip */}
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${getDoctorAvatarColor(selectedDoctor.name || "")} flex items-center justify-center flex-shrink-0 shadow-md`}>
+                  <span className="text-white font-bold text-lg">{(selectedDoctor.name || "?").slice(0, 2).toUpperCase()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-slate-800">Dr. {selectedDoctor.name}</h3>
+                  <p className="text-sm text-slate-500">{selectedDoctor.specialization}</p>
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 text-xs text-slate-500"><MapPin className="h-3 w-3" />{formatLocation(selectedDoctor.location)}</span>
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                      <IndianRupee className="h-3 w-3" />₹{selectedDoctor.consultationFee || 500}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
+                {/* Date picker */}
                 <div>
-                  <Label>Select Date</Label>
+                  <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Select Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {bookDate ? format(bookDate, "PPP") : "Pick a date"}
+                      <Button variant="outline" className="w-full justify-start text-left font-normal rounded-xl border-2 border-slate-200 hover:border-indigo-400 h-10">
+                        <CalendarIcon className="mr-2 h-4 w-4 text-indigo-500" />
+                        {bookDate ? format(bookDate, "PPP") : <span className="text-slate-400">Pick a date</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0 rounded-2xl border border-slate-200 shadow-xl">
                       <Calendar
                         mode="single"
                         selected={bookDate}
@@ -974,37 +1003,40 @@ const PatientDashboard = () => {
                   </Popover>
                 </div>
 
+                {/* Time picker */}
                 <div>
-                  <Label>Select Time</Label>
-                  <select
-                    value={bookTime}
-                    onChange={(e) => setBookTime(e.target.value)}
-                    disabled={!bookDate}
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                  >
-                    <option value="">Choose time...</option>
-                    {availableTimeSlots.map((slot: string) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
-                    ))}
-                  </select>
+                  <Label className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">Select Time</Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <select
+                      value={bookTime}
+                      onChange={(e) => setBookTime(e.target.value)}
+                      disabled={!bookDate}
+                      className="w-full h-10 pl-9 pr-3 text-sm text-slate-800 rounded-xl border-2 border-slate-200 bg-white focus:outline-none focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
+                    >
+                      <option value="">Choose time...</option>
+                      {availableTimeSlots.map((slot: string) => (
+                        <option key={slot} value={slot}>{slot}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
               {bookDate && availableTimeSlots.length === 0 && (
-                <p className="text-sm text-destructive">No slots available on this day</p>
+                <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">No slots available on this day. Please try another date.</p>
               )}
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBookingModal(false)}>
+          <DialogFooter className="px-6 pb-6 pt-0 gap-2">
+            <Button variant="outline" onClick={() => setShowBookingModal(false)} className="rounded-xl border-slate-200 flex-1">
               Cancel
             </Button>
             <Button
               onClick={handleConfirmBooking}
               disabled={!bookDate || !bookTime}
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm shadow-indigo-200 flex-1"
             >
               Confirm Booking
             </Button>

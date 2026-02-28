@@ -2,7 +2,10 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/contexts/AuthContext';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:5000';
 
 export const useSocket = () => {
   const { user } = useAuth();
@@ -28,7 +31,7 @@ export const useSocket = () => {
       reconnectionAttempts: 5,
       auth: {
         userId: user._id,
-        token: localStorage.getItem('token'),
+        token: localStorage.getItem('authToken'),
       },
     });
 

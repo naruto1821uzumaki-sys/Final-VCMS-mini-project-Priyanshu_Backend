@@ -336,14 +336,27 @@ const updateAppointmentStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
-    // Only doctor or admin can change status
+    // Doctor/admin can change any status.
+    // Patients can only mark their own appointment as 'completed' (e.g. when they end a video call).
     if (req.user.role !== 'admin' && req.user.role !== 'doctor') {
-      return res.status(403).json({ message: 'Forbidden' });
+      if (req.user.role === 'patient' && status === 'completed') {
+        // Will be validated against ownership below
+      } else {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
     }
 
     const appointment = await Appointment.findById(id);
     if (!appointment) {
       return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    // Patient ownership check: patient can only complete their own appointment
+    if (req.user.role === 'patient') {
+      const patientId = appointment.patientId?.toString() || appointment.patient?.toString();
+      if (patientId !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Forbidden: not your appointment' });
+      }
     }
 
     const oldStatus = appointment.status;

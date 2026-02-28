@@ -7,8 +7,11 @@ const submitContact = async (req, res) => {
     const { problemType, subject, description, priority } = req.body;
     const user = req.user;
 
+    const normalizedSubject = (subject || "").trim();
+    const normalizedDescription = (description || "").trim();
+
     // Validate
-    if (!problemType || !subject || !description) {
+    if (!problemType || !normalizedSubject || !normalizedDescription) {
       return res.status(400).json({ 
         message: "Problem type, subject, and description are required" 
       });
@@ -17,13 +20,13 @@ const submitContact = async (req, res) => {
     // Create contact record
     const contact = await Contact.create({
       userId: user._id,
-      userName: user.name,
-      userEmail: user.email,
-      userPhone: user.phone,
+      userName: user.name || "Unknown User",
+      userEmail: user.email || "no-email@example.com",
+      userPhone: user.phone || "N/A",
       userRole: user.role,
       problemType,
-      subject,
-      description,
+      subject: normalizedSubject,
+      description: normalizedDescription,
       priority: priority || "medium",
     });
 
