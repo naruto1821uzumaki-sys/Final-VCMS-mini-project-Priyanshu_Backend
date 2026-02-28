@@ -159,7 +159,7 @@ const Login = () => {
             ))}
           </div>
         </div>
-        <p className="text-slate-600 text-xs">© 2025 MediConnect · Your health, secured.</p>
+        <p className="text-slate-600 text-xs">© 2026 MediConnect · Your health, secured.</p>
       </div>
 
       {/* Right panel – form */}

@@ -400,84 +400,64 @@ const PatientDashboard = () => {
     <div className="min-h-screen bg-slate-50/60 p-4 md:p-6 space-y-6">
 
       {/* ── Hero Header ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="h-1 w-full bg-primary" />
-        <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-5">
-          <div className="flex-1">
-            <p className="text-[11px] font-bold text-primary/70 uppercase tracking-widest mb-1">Patient Portal</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
+      <div className="rounded-2xl overflow-hidden bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 shadow-xl">
+        <div className="px-6 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-bold text-blue-400/80 uppercase tracking-widest mb-1">Patient Portal</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
               Hello, {user?.name?.split(" ")[0] || "there"} 👋
             </h1>
-            <p className="text-slate-500 mt-1 text-sm">Book appointments, view records and manage your health.</p>
+            <p className="text-slate-400 text-sm mt-1">Book appointments, view records and manage your health.</p>
           </div>
-          <div className="flex gap-3 flex-wrap">
-            {[
-              { label: "Upcoming",  value: upcomingAppointments.length, color: "text-blue-600",    bg: "bg-blue-50 border-blue-100",    icon: CalendarDays },
-              { label: "Completed", value: pastAppointments.length,     color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", icon: CheckCircle },
-              { label: "Doctors",   value: doctors.length,              color: "text-violet-600",  bg: "bg-violet-50 border-violet-100",  icon: Stethoscope },
-            ].map(({ label, value, color, bg, icon: Icon }) => (
-              <div key={label} className={`${bg} border rounded-xl px-4 py-3 text-center min-w-[76px]`}>
-                <Icon className={`h-4 w-4 ${color} mx-auto mb-1`} />
-                <p className={`text-xl font-black ${color} leading-none`}>{value}</p>
-                <p className="text-slate-500 text-[11px] font-medium mt-0.5">{label}</p>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => navigate("/patient/appointments")}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all"
+            >
+              <CalendarDays className="h-4 w-4" /> My Appointments
+            </button>
+          </div>
+        </div>
+        {/* Stats ribbon */}
+        <div className="border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 divide-x divide-white/10">
+          {[
+            { label: "Upcoming",     value: upcomingAppointments.length,                                                              color: "text-blue-300",    icon: CalendarDays },
+            { label: "Completed",    value: pastAppointments.length,                                                                  color: "text-emerald-300", icon: CheckCircle  },
+            { label: "Prescriptions",value: myAppointments.filter((a) => getPrescriptionByAppointment(a._id)).length,                color: "text-violet-300",  icon: FileText     },
+            { label: "Doctors",      value: doctors.length,                                                                           color: "text-amber-300",   icon: Stethoscope  },
+          ].map(({ label, value, color, icon: Icon }) => (
+            <div key={label} className="flex items-center gap-3 px-5 py-3">
+              <Icon className={`h-5 w-5 ${color} flex-shrink-0`} />
+              <div>
+                <p className={`text-lg font-black leading-none ${color}`}>{value}</p>
+                <p className="text-slate-400 text-[11px] mt-0.5">{label}</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* ── Quick Access Cards ───────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          {
-            icon: ClipboardList,
-            title: "Medical History",
-            desc: "View and manage your past records",
-            cta: "Open Records",
-            path: "/patient/medical-history",
-            iconBg: "bg-blue-50",
-            iconColor: "text-blue-600",
-            ctaColor: "text-blue-600",
-          },
-          {
-            icon: ScanLine,
-            title: "AI Report Analyzer",
-            desc: "Upload a report — get AI insights",
-            cta: "Analyse a Report",
-            path: "/patient/ai-analyzer",
-            iconBg: "bg-violet-50",
-            iconColor: "text-violet-600",
-            ctaColor: "text-violet-600",
-          },
-          {
-            icon: Pill,
-            title: "My Prescriptions",
-            desc: "View prescriptions with AI summaries",
-            cta: "View Prescriptions",
-            path: "/patient/prescriptions",
-            iconBg: "bg-emerald-50",
-            iconColor: "text-emerald-600",
-            ctaColor: "text-emerald-600",
-          },
-        ].map((card) => (
-          <div
-            key={card.path}
-            className="rounded-2xl border border-slate-200 bg-white hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group p-5 flex items-start gap-4"
-            onClick={() => navigate(card.path)}
+          { icon: ClipboardList, title: "Medical History",    desc: "View & manage past records",    path: "/patient/medical-history", bg: "bg-blue-600"    },
+          { icon: ScanLine,      title: "AI Report Analyzer", desc: "Upload a report · get AI insights", path: "/patient/ai-analyzer",  bg: "bg-violet-600"  },
+          { icon: Pill,          title: "My Prescriptions",   desc: "Prescriptions with AI summaries",  path: "/patient/prescriptions", bg: "bg-emerald-600" },
+        ].map(({ icon: Icon, title, desc, path, bg }) => (
+          <button
+            key={path}
+            onClick={() => navigate(path)}
+            className={`${bg} hover:opacity-90 rounded-2xl px-4 py-4 text-white flex items-center gap-3 transition-all hover:-translate-y-0.5 hover:shadow-lg text-left`}
           >
-            <div className={`h-11 w-11 rounded-xl ${card.iconBg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
-              <card.icon className={`h-5 w-5 ${card.iconColor}`} />
+            <div className="h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Icon className="h-5 w-5" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-800 text-sm">{card.title}</p>
-              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{card.desc}</p>
-              <div className={`flex items-center gap-1 text-xs font-semibold ${card.ctaColor} mt-2 group-hover:gap-2 transition-all`}>
-                {card.cta} <ChevronRight className="h-3.5 w-3.5" />
-              </div>
+            <div>
+              <span className="font-semibold text-sm leading-tight block">{title}</span>
+              <span className="text-white/70 text-xs">{desc}</span>
             </div>
-          </div>
+          </button>
         ))}
-
       </div>
 
       {/* ── Find Doctors ─────────────────────────────────────────────── */}

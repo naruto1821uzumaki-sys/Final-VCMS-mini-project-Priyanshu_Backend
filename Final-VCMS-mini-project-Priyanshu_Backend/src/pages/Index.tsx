@@ -114,7 +114,7 @@ const Index = () => {
                 <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-violet-400 bg-clip-text text-transparent">
                   Reimagined
                 </span>{" "}
-                for 2025
+                for 2026
               </h1>
               <p className="text-lg sm:text-xl text-slate-300 leading-relaxed max-w-lg">
                 Connect with verified doctors via video consultation, get digital prescriptions, upload medical reports for AI analysis — all from your browser.
@@ -283,7 +283,7 @@ const Index = () => {
             <Link to="/login" className="hover:text-white transition-colors">Sign In</Link>
             <Link to="/register" className="hover:text-white transition-colors">Register</Link>
           </div>
-          <p className="text-xs text-slate-600">© 2025 MediConnect. All rights reserved.</p>
+          <p className="text-xs text-slate-600">© 2026 MediConnect. All rights reserved.</p>
         </div>
       </footer>
     </div>

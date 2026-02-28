@@ -353,7 +353,7 @@
             )}
           </div>
           <div className="relative z-10 text-slate-600 text-sm">
-            © 2025 MediConnect. Secure & HIPAA-compliant.
+            © 2026 MediConnect. Secure & HIPAA-compliant.
           </div>
         </div>
 
