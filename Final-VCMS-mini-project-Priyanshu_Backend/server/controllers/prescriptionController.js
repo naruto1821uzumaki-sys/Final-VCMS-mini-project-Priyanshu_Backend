@@ -118,10 +118,11 @@ const issuePrescription = async (req, res) => {
       const notif = await Notification.create({
         userId: prescription.patientId,
         title: 'Prescription Issued',
-        message: `Dr. ${req.user.name} has issued a new prescription`,
-        type: 'system',
+        message: `Dr. ${req.user.name} has issued a new prescription for you`,
+        type: 'prescription',
         from: req.user._id,
         link: `/prescriptions/${prescription._id}`,
+        data: { prescriptionId: prescription._id },
       });
       socketHandler.emitToUser(prescription.patientId.toString(), 'notification', notif);
       socketHandler.emitToUser(prescription.patientId.toString(), 'prescription:issued', {

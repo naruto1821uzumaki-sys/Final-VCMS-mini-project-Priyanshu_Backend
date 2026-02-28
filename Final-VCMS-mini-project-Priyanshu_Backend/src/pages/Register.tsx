@@ -4,12 +4,9 @@
   import { Button } from "@/components/ui/button";
   import { Input } from "@/components/ui/input";
   import { Label } from "@/components/ui/label";
-  import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
   import { Activity, ArrowRight, Stethoscope, User, AlertCircle, CheckCircle } from "lucide-react";
   import { useToast } from "@/hooks/use-toast";
-  import { Alert, AlertDescription } from "@/components/ui/alert";
-  import { Textarea } from "@/components/ui/textarea";
 
   const SPECIALIZATIONS = [
     "Cardiology",
@@ -299,260 +296,302 @@
     };
 
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background via-secondary/5 to-primary/5">
-        <div className="w-full max-w-lg space-y-8">
-          <div className="text-center space-y-2">
-            <div className="flex justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow">
-                <Activity className="h-7 w-7" />
+      <div className="min-h-screen flex bg-slate-950">
+        {/* Left branding panel */}
+        <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 flex-col justify-between p-12 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10"
+            style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #3b82f6 0%, transparent 50%), radial-gradient(circle at 80% 20%, #6366f1 0%, transparent 50%)" }} />
+          <div className="relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-blue-500 flex items-center justify-center">
+                <Activity className="h-5 w-5 text-white" />
               </div>
+              <span className="text-white font-bold text-xl">MediConnect</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Create Account</h1>
-            <p className="text-muted-foreground">Join MediConnect as a patient or doctor</p>
           </div>
-
-          <Card className="shadow-xl bg-card rounded-xl overflow-hidden">
-            <form onSubmit={handleSubmit} noValidate>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg text-foreground">Registration</CardTitle>
-                <CardDescription className="text-muted-foreground">Select your role and fill in your details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {/* Role Selector */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRole("patient")}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
-                      role === "patient"
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-secondary hover:border-secondary/80"
-                    }`}
-                  >
-                    <User className={`h-6 w-6 ${role === "patient" ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-sm font-semibold ${role === "patient" ? "text-primary" : "text-muted-foreground"}`}>
-                      Patient
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole("doctor")}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
-                      role === "doctor"
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-secondary hover:border-secondary/80"
-                    }`}
-                  >
-                    <Stethoscope className={`h-6 w-6 ${role === "doctor" ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className={`text-sm font-semibold ${role === "doctor" ? "text-primary" : "text-muted-foreground"}`}>
-                      Doctor
-                    </span>
-                  </button>
+          <div className="relative z-10 space-y-6">
+            {role === "patient" ? (
+              <>
+                <div className="h-16 w-16 rounded-2xl bg-blue-500/20 flex items-center justify-center border border-blue-400/30">
+                  <User className="h-8 w-8 text-blue-400" />
                 </div>
-
-                {/* Approval Notice for Both Roles */}
-                <Alert className="bg-blue-50 border-blue-200">
-                  <AlertCircle className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-900">
-                    Your registration will be reviewed by an admin. You'll receive an approval/rejection notification via email.
-                    {role === "doctor" && " Once approved, you can login and update your profile."}
-                    {role === "patient" && " Once approved, you can login and book appointments."}
-                  </AlertDescription>
-                </Alert>
-
-                {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input 
-                      id="firstName" 
-                      name="firstName" 
-                      value={formData.firstName} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur}
-                      className={errors.firstName ? "border-destructive" : ""}
-                    />
-                    {errors.firstName && <p className="text-xs text-destructive font-medium">{errors.firstName}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input 
-                      id="lastName" 
-                      name="lastName" 
-                      value={formData.lastName} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur}
-                      className={errors.lastName ? "border-destructive" : ""}
-                    />
-                    {errors.lastName && <p className="text-xs text-destructive font-medium">{errors.lastName}</p>}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    placeholder="example@gmail.com"
-                    value={formData.email} 
-                    onChange={handleChange} 
-                    onBlur={handleBlur}
-                    className={errors.email ? "border-destructive" : ""}
-                  />
-                  {errors.email && <p className="text-xs text-destructive font-medium">{errors.email}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone (10 digits)</Label>
-                  <Input 
-                    id="phone" 
-                    name="phone" 
-                    placeholder="9876543210"
-                    value={formData.phone} 
-                    onChange={handleChange} 
-                    onBlur={handleBlur}
-                    className={errors.phone ? "border-destructive" : ""}
-                  />
-                  {errors.phone && <p className="text-xs text-destructive font-medium">{errors.phone}</p>}
-                </div>
-
-                {/* Doctor-specific fields */}
-                {role === "doctor" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="specialization">Specialization *</Label>
-                      <Select
-                        value={formData.specialization}
-                        onValueChange={(val) => {
-                          setFormData((prev) => ({ ...prev, specialization: val }));
-                          if (val) setErrors((prev) => { const e = { ...prev }; delete e.specialization; return e; });
-                          if (val !== 'other') {
-                            setOtherSpecialization("");
-                            setErrors((prev) => { const e = { ...prev }; delete e.otherSpecialization; return e; });
-                          }
-                        }}
-                      >
-                        <SelectTrigger className={errors.specialization ? "border-destructive" : ""}>
-                          <SelectValue placeholder="Select specialization" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {SPECIALIZATIONS.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {errors.specialization && <p className="text-xs text-destructive font-medium">{errors.specialization}</p>}
-                    </div>
-                    {formData.specialization === 'other' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="otherSpecialization">Please specify *</Label>
-                        <Input
-                          id="otherSpecialization"
-                          name="otherSpecialization"
-                          placeholder="Enter your specialization"
-                          value={otherSpecialization}
-                          onChange={(e) => {
-                            setOtherSpecialization(e.target.value);
-                            if (e.target.value.trim()) setErrors((prev) => { const er = { ...prev }; delete er.otherSpecialization; return er; });
-                          }}
-                          onBlur={(e) => {
-                            if (!e.target.value.trim()) setErrors((prev) => ({ ...prev, otherSpecialization: "Please specify your specialization" }));
-                          }}
-                          className={errors.otherSpecialization ? "border-destructive" : ""}
-                        />
-                        {errors.otherSpecialization && <p className="text-xs text-destructive font-medium">{errors.otherSpecialization}</p>}
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <Label htmlFor="experience">Experience (years) *</Label>
-                      <Input 
-                        id="experience" 
-                        name="experience" 
-                        type="number" 
-                        min="0"
-                        value={formData.experience} 
-                        onChange={handleChange} 
-                        onBlur={handleBlur}
-                        className={errors.experience ? "border-destructive" : ""}
-                      />
-                      {errors.experience && <p className="text-xs text-destructive font-medium">{errors.experience}</p>}
-                    </div>
-                  </>
-                )}
-                {/* Patient-specific fields */}
-                {role === "patient" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="dateOfBirth">Date of Birth *</Label>
-                      <Input 
-                        id="dateOfBirth" 
-                        name="dateOfBirth" 
-                        type="date" 
-                        value={formData.dateOfBirth} 
-                        onChange={handleChange} 
-                        onBlur={handleBlur}
-                        className={errors.dateOfBirth ? "border-destructive" : ""}
-                      />
-                      {errors.dateOfBirth && <p className="text-xs text-destructive font-medium">{errors.dateOfBirth}</p>}
-                    </div>
-                  </>
-                )}
-
-                {/* Password */}
+                <h2 className="text-4xl font-bold text-white leading-tight">
+                  Your Health,<br />Our Priority
+                </h2>
+                <p className="text-slate-400 text-lg leading-relaxed">
+                  Book appointments, consult doctors over video, track your health records — all in one platform.
+                </p>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input 
-                        id="password" 
-                        name="password" 
-                        type="password" 
-                        placeholder="Aa1@xxxx"
-                        value={formData.password} 
-                        onChange={handleChange} 
-                        onBlur={handleBlur}
-                        className={errors.password ? "border-destructive" : ""}
-                      />
-                      {errors.password && <p className="text-xs text-destructive font-medium">{errors.password}</p>}
+                  {["Instant video consultations", "Secure medical records", "Prescription tracking", "24/7 doctor access"].map((f) => (
+                    <div key={f} className="flex items-center gap-3">
+                      <div className="h-2 w-2 rounded-full bg-blue-400" />
+                      <span className="text-slate-300">{f}</span>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
-                      <Input 
-                        id="confirmPassword" 
-                        name="confirmPassword" 
-                        type="password" 
-                        placeholder="Aa1@xxxx"
-                        value={formData.confirmPassword} 
-                        onChange={handleChange} 
-                        onBlur={handleBlur}
-                        className={errors.confirmPassword ? "border-destructive" : ""}
-                      />
-                      {errors.confirmPassword && <p className="text-xs text-destructive font-medium">{errors.confirmPassword}</p>}
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="h-16 w-16 rounded-2xl bg-indigo-500/20 flex items-center justify-center border border-indigo-400/30">
+                  <Stethoscope className="h-8 w-8 text-indigo-400" />
+                </div>
+                <h2 className="text-4xl font-bold text-white leading-tight">
+                  Practice Smart,<br />Help More
+                </h2>
+                <p className="text-slate-400 text-lg leading-relaxed">
+                  Manage your patients, conduct video consultations, issue prescriptions — from anywhere.
+                </p>
+                <div className="space-y-3">
+                  {["Video consultation tools", "Digital prescription system", "Patient management", "Appointment scheduling"].map((f) => (
+                    <div key={f} className="flex items-center gap-3">
+                      <div className="h-2 w-2 rounded-full bg-indigo-400" />
+                      <span className="text-slate-300">{f}</span>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <div className="relative z-10 text-slate-600 text-sm">
+            © 2025 MediConnect. Secure & HIPAA-compliant.
+          </div>
+        </div>
 
-                  {/* Password Requirements */}
-                  {formData.password && (
-                    <div className="text-xs space-y-1 p-2 bg-muted rounded-md">
-                      <p className={validatePassword(formData.password) ? "text-green-600 flex items-center gap-1" : "text-muted-foreground flex items-center gap-1"}>
-                        {validatePassword(formData.password) ? <CheckCircle className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                        8+ chars, 1 uppercase, 1 number, 1 special (@$!%*?&)
-                      </p>
+        {/* Right form panel */}
+        <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white overflow-y-auto">
+          <div className="w-full max-w-lg">
+            {/* Mobile logo */}
+            <div className="lg:hidden flex items-center gap-2 mb-8">
+              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                <Activity className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-bold text-slate-900">MediConnect</span>
+            </div>
+
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-slate-900 mb-2">Create your account</h1>
+              <p className="text-slate-500">Join MediConnect — select your role to get started</p>
+            </div>
+
+            {/* Role selector */}
+            <div className="grid grid-cols-2 gap-3 mb-8">
+              <button
+                type="button"
+                onClick={() => setRole("patient")}
+                className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-5 transition-all ${
+                  role === "patient"
+                    ? "border-blue-600 bg-blue-50 shadow-sm"
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <User className={`h-7 w-7 ${role === "patient" ? "text-blue-600" : "text-slate-400"}`} />
+                <span className={`text-sm font-semibold ${role === "patient" ? "text-blue-600" : "text-slate-500"}`}>Patient</span>
+                <span className="text-xs text-slate-400 text-center">Book & consult</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("doctor")}
+                className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-5 transition-all ${
+                  role === "doctor"
+                    ? "border-indigo-600 bg-indigo-50 shadow-sm"
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <Stethoscope className={`h-7 w-7 ${role === "doctor" ? "text-indigo-600" : "text-slate-400"}`} />
+                <span className={`text-sm font-semibold ${role === "doctor" ? "text-indigo-600" : "text-slate-500"}`}>Doctor</span>
+                <span className="text-xs text-slate-400 text-center">Manage patients</span>
+              </button>
+            </div>
+
+            {/* Approval notice */}
+            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl mb-6">
+              <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-800">
+                Your registration is reviewed by an admin.{" "}
+                {role === "doctor"
+                  ? "Once approved, login to update your profile and start seeing patients."
+                  : "Once approved, login to book appointments and consult doctors."}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} noValidate className="space-y-5">
+              {/* Name row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="firstName" className="text-slate-700 font-medium text-sm">First Name</Label>
+                  <Input
+                    id="firstName" name="firstName"
+                    placeholder="John"
+                    value={formData.firstName}
+                    onChange={handleChange} onBlur={handleBlur}
+                    className={`h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 transition-colors ${errors.firstName ? "border-red-400 bg-red-50" : ""}`}
+                  />
+                  {errors.firstName && <p className="text-xs text-red-500">{errors.firstName}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="lastName" className="text-slate-700 font-medium text-sm">Last Name</Label>
+                  <Input
+                    id="lastName" name="lastName"
+                    placeholder="Doe"
+                    value={formData.lastName}
+                    onChange={handleChange} onBlur={handleBlur}
+                    className={`h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 transition-colors ${errors.lastName ? "border-red-400 bg-red-50" : ""}`}
+                  />
+                  {errors.lastName && <p className="text-xs text-red-500">{errors.lastName}</p>}
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-slate-700 font-medium text-sm">Email Address</Label>
+                <Input
+                  id="email" name="email" type="email"
+                  placeholder="example@gmail.com"
+                  value={formData.email}
+                  onChange={handleChange} onBlur={handleBlur}
+                  className={`h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 transition-colors ${errors.email ? "border-red-400 bg-red-50" : ""}`}
+                />
+                {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-slate-700 font-medium text-sm">Phone Number</Label>
+                <Input
+                  id="phone" name="phone"
+                  placeholder="9876543210 (10 digits)"
+                  value={formData.phone}
+                  onChange={handleChange} onBlur={handleBlur}
+                  className={`h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 transition-colors ${errors.phone ? "border-red-400 bg-red-50" : ""}`}
+                />
+                {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
+              </div>
+
+              {/* Doctor-specific */}
+              {role === "doctor" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="specialization" className="text-slate-700 font-medium text-sm">Specialization *</Label>
+                    <Select
+                      value={formData.specialization}
+                      onValueChange={(val) => {
+                        setFormData((prev) => ({ ...prev, specialization: val }));
+                        if (val) setErrors((prev) => { const e = { ...prev }; delete e.specialization; return e; });
+                        if (val !== 'other') { setOtherSpecialization(""); setErrors((prev) => { const e = { ...prev }; delete e.otherSpecialization; return e; }); }
+                      }}
+                    >
+                      <SelectTrigger className={`h-11 rounded-xl border-slate-200 bg-slate-50 ${errors.specialization ? "border-red-400 bg-red-50" : ""}`}>
+                        <SelectValue placeholder="Select your specialization" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {SPECIALIZATIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.specialization && <p className="text-xs text-red-500">{errors.specialization}</p>}
+                  </div>
+                  {formData.specialization === 'other' && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="otherSpecialization" className="text-slate-700 font-medium text-sm">Please Specify *</Label>
+                      <Input
+                        id="otherSpecialization" name="otherSpecialization"
+                        placeholder="Enter your specialization"
+                        value={otherSpecialization}
+                        onChange={(e) => { setOtherSpecialization(e.target.value); if (e.target.value.trim()) setErrors((prev) => { const er = { ...prev }; delete er.otherSpecialization; return er; }); }}
+                        onBlur={(e) => { if (!e.target.value.trim()) setErrors((prev) => ({ ...prev, otherSpecialization: "Please specify your specialization" })); }}
+                        className={`h-11 rounded-xl border-slate-200 bg-slate-50 ${errors.otherSpecialization ? "border-red-400 bg-red-50" : ""}`}
+                      />
+                      {errors.otherSpecialization && <p className="text-xs text-red-500">{errors.otherSpecialization}</p>}
                     </div>
                   )}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="experience" className="text-slate-700 font-medium text-sm">Years of Experience *</Label>
+                    <Input
+                      id="experience" name="experience" type="number" min="0"
+                      placeholder="e.g. 5"
+                      value={formData.experience}
+                      onChange={handleChange} onBlur={handleBlur}
+                      className={`h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 transition-colors ${errors.experience ? "border-red-400 bg-red-50" : ""}`}
+                    />
+                    {errors.experience && <p className="text-xs text-red-500">{errors.experience}</p>}
+                  </div>
+                </>
+              )}
+
+              {/* Patient-specific */}
+              {role === "patient" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="dateOfBirth" className="text-slate-700 font-medium text-sm">Date of Birth * (18+)</Label>
+                  <Input
+                    id="dateOfBirth" name="dateOfBirth" type="date"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange} onBlur={handleBlur}
+                    className={`h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 transition-colors ${errors.dateOfBirth ? "border-red-400 bg-red-50" : ""}`}
+                  />
+                  {errors.dateOfBirth && <p className="text-xs text-red-500">{errors.dateOfBirth}</p>}
                 </div>
-              </CardContent>
-              <CardFooter className="flex-col gap-3 pt-4">
-                <Button type="submit" className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
-                  {loading ? "Creating account..." : "Create Account"}
-                  {!loading && <ArrowRight className="h-4 w-4" />}
-                </Button>
-              </CardFooter>
+              )}
+
+              {/* Password row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-slate-700 font-medium text-sm">Password</Label>
+                  <Input
+                    id="password" name="password" type="password"
+                    placeholder="Aa1@xxxx"
+                    value={formData.password}
+                    onChange={handleChange} onBlur={handleBlur}
+                    className={`h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 transition-colors ${errors.password ? "border-red-400 bg-red-50" : ""}`}
+                  />
+                  {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword" className="text-slate-700 font-medium text-sm">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword" name="confirmPassword" type="password"
+                    placeholder="Aa1@xxxx"
+                    value={formData.confirmPassword}
+                    onChange={handleChange} onBlur={handleBlur}
+                    className={`h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 transition-colors ${errors.confirmPassword ? "border-red-400 bg-red-50" : ""}`}
+                  />
+                  {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
+                </div>
+              </div>
+
+              {/* Password strength hint */}
+              {formData.password && (
+                <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${validatePassword(formData.password) ? "bg-green-50 text-green-700" : "bg-slate-50 text-slate-500"}`}>
+                  {validatePassword(formData.password)
+                    ? <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                    : <AlertCircle className="h-3.5 w-3.5 text-amber-500" />}
+                  8+ chars, uppercase, number & special character (@$!%*?&)
+                </div>
+              )}
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full h-12 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all mt-2
+                  ${role === "doctor"
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                    : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"}
+                  ${loading ? "opacity-70 cursor-not-allowed" : "shadow-lg hover:shadow-blue-500/25"}`}
+              >
+                {loading ? (
+                  <><div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Creating account...</>
+                ) : (
+                  <><span>Create Account</span><ArrowRight className="h-4 w-4" /></>
+                )}
+              </button>
+
+              <p className="text-center text-sm text-slate-500 pt-1">
+                Already have an account?{" "}
+                <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold">Sign in</Link>
+              </p>
             </form>
-          </Card>
+          </div>
         </div>
       </div>
     );

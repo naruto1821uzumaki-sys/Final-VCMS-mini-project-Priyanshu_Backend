@@ -4,7 +4,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -126,97 +125,135 @@ const Login = () => {
 
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background via-secondary/5 to-primary/5">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
-          <div className="flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow">
-              <Activity className="h-7 w-7" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome Back</h1>
-          <p className="text-muted-foreground">Sign in to your MediConnect account</p>
+    <div className="min-h-screen flex">
+      {/* Left panel – branding */}
+      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-12 text-white">
+        <div className="flex items-center gap-2.5">
+          <Activity className="h-6 w-6 text-blue-400" />
+          <span className="font-bold text-lg tracking-tight">MediConnect</span>
         </div>
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-medium">
+              Virtual Clinic Platform
+            </div>
+            <h2 className="text-4xl font-extrabold leading-tight">
+              Healthcare that comes{" "}
+              <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">to you.</span>
+            </h2>
+            <p className="text-slate-400 text-base leading-relaxed">
+              Connect with verified doctors, get prescriptions, and analyze your medical reports — all from your browser.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: "Active Doctors", value: "500+" },
+              { label: "Consultations", value: "50k+" },
+              { label: "Patients Served", value: "10k+" },
+              { label: "Rating", value: "4.9 ★" },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <p className="text-2xl font-extrabold text-white">{value}</p>
+                <p className="text-slate-400 text-xs mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className="text-slate-600 text-xs">© 2025 MediConnect · Your health, secured.</p>
+      </div>
 
-        <Card className="shadow-xl bg-card rounded-xl overflow-hidden">
-          <form onSubmit={handleSubmit} noValidate>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg text-foreground">Sign In</CardTitle>
-              <CardDescription className="text-muted-foreground">Enter your credentials to access your dashboard</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Submit Error */}
-              {errors.submit && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-3 flex gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700 font-medium">{errors.submit}</p>
-                </div>
-              )}
+      {/* Right panel – form */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12 bg-white">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <Activity className="h-5 w-5 text-primary" />
+            <span className="font-bold text-slate-900">MediConnect</span>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
-                <Input 
-                  id="email" 
-                  name="email"
-                  type="email" 
-                  placeholder="example@gmail.com" 
-                  value={email} 
-                  onChange={handleEmailChange} 
+          <div className="space-y-2">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Welcome back</h1>
+            <p className="text-slate-500">Sign in to your account to continue</p>
+          </div>
+
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+            {errors.submit && (
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 flex gap-2.5">
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{errors.submit}</p>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-semibold text-slate-700">Email Address</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="example@gmail.com"
+                value={email}
+                onChange={handleEmailChange}
+                onBlur={handleBlur}
+                className={`h-11 rounded-xl border-slate-200 focus:border-primary focus:ring-primary/20 ${errors.email ? "border-red-400 focus:border-red-400" : ""}`}
+              />
+              {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</Label>
+                <button type="button" onClick={() => navigate("/forgot-password")} className="text-xs text-primary hover:underline font-medium">
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={handlePasswordChange}
                   onBlur={handleBlur}
-                  className={`border-secondary focus:border-primary focus:ring-primary ${errors.email ? "border-destructive" : ""}`}
+                  className={`h-11 rounded-xl border-slate-200 focus:border-primary focus:ring-primary/20 pr-10 ${errors.password ? "border-red-400" : ""}`}
                 />
-                {errors.email && <p className="text-xs text-destructive font-medium">{errors.email}</p>}
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
+              {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
-                <div className="relative">
-                  <Input 
-                    id="password" 
-                    name="password"
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="••••••••" 
-                    value={password} 
-                    onChange={handlePasswordChange} 
-                    onBlur={handleBlur}
-                    className={`border-secondary focus:border-primary focus:ring-primary ${errors.password ? "border-destructive" : ""}`}
-                  />
-                  <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-                {errors.password && <p className="text-xs text-destructive font-medium">{errors.password}</p>}
+            {/* Demo credentials */}
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2">
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Demo Credentials</p>
+              <div className="space-y-1 text-xs text-slate-600">
+                <p><span className="font-semibold text-slate-800">Admin:</span> admin@gmail.com / 12345</p>
+                <p><span className="font-semibold text-slate-800">Doctor:</span> alice.doctor@vcms.com / doctor123</p>
+                <p><span className="font-semibold text-slate-800">Patient:</span> john@patient.com / patient123</p>
               </div>
+            </div>
 
-              <div className="rounded-lg bg-primary/10 p-3 space-y-1.5 border border-primary/20">
-                <p className="text-xs font-semibold text-primary">Demo Credentials</p>
-                <div className="grid gap-1 text-xs text-muted-foreground">
-                  <p><span className="font-medium">Admin:</span> admin@gmail.com / 12345</p>
-                  <p><span className="font-medium">Doctor:</span> alice.doctor@vcms.com / doctor123</p>
-                  <p><span className="font-medium">Patient:</span> john@patient.com / patient123</p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex-col gap-3 pt-4">
-              <Button type="submit" className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
-                {loading ? "Signing in..." : "Sign In"}
-                {!loading && <ArrowRight className="h-4 w-4" />}
-              </Button>
-              <Button 
-                type="button"
-                variant="ghost" 
-                className="w-full text-primary font-semibold hover:bg-primary/10"
-                onClick={() => navigate("/forgot-password")}
-              >
-                Forgot Password?
-              </Button>
-            </CardFooter>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-700 text-white font-semibold text-base shadow-lg shadow-primary/20 gap-2"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2"><span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Signing in...</span>
+              ) : (
+                <span className="flex items-center gap-2">Sign In <ArrowRight className="h-4 w-4" /></span>
+              )}
+            </Button>
           </form>
-        </Card>
+
+          <p className="text-center text-sm text-slate-500">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-primary font-semibold hover:underline">Create one free</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
 };
-
 export default Login;
-

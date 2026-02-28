@@ -228,25 +228,67 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl pb-12">
-      {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-6 text-white shadow-xl">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="min-h-screen bg-slate-50/60">
+    <div className="container mx-auto px-4 py-6 space-y-6 max-w-7xl pb-12">
+      {/* ── Hero Header ─────────────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden bg-gradient-to-r from-slate-900 via-blue-950 to-violet-950 shadow-xl">
+        <div className="px-6 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Admin Control Panel</h1>
-            <p className="mt-1 text-blue-100">
-              Welcome, <span className="font-semibold text-white">{user?.name || "Admin User"}</span> · {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            <p className="text-[11px] font-bold text-blue-400/80 uppercase tracking-widest mb-1 flex items-center gap-2">
+              <Shield className="h-3 w-3" /> Admin Control Panel
+            </p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              Welcome, {user?.name || "Admin"} 🛡️
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => fetchDashboardData()}>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => fetchDashboardData()} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all">
               <RefreshCw className="h-4 w-4" /> Refresh
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2 bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => analyticsRef.current?.scrollIntoView({ behavior: "smooth" })}>
+            </button>
+            <button onClick={() => analyticsRef.current?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all">
               <TrendingUp className="h-4 w-4" /> Analytics
-            </Button>
+            </button>
           </div>
         </div>
+        {/* Stats ribbon */}
+        <div className="border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 divide-x divide-white/10">
+          {[
+            { label: "Total Users",  value: stats.totalUsers,       color: "text-blue-300",    icon: Users        },
+            { label: "Appointments", value: stats.totalAppointments, color: "text-emerald-300", icon: CalendarDays },
+            { label: "Pending",      value: stats.pendingDoctors + stats.pendingPatients, color: "text-amber-300", icon: AlertCircle },
+            { label: "Open Tickets", value: stats.openContacts,     color: "text-violet-300",  icon: MessageSquare},
+          ].map(({ label, value, color, icon: Icon }) => (
+            <div key={label} className="flex items-center gap-3 px-5 py-3">
+              <Icon className={`h-5 w-5 ${color} flex-shrink-0`} />
+              <div>
+                <p className={`text-lg font-black leading-none ${color}`}>{value}</p>
+                <p className="text-slate-400 text-[11px] mt-0.5">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick nav */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Manage Users",     icon: Users,       path: "/admin/users",        bg: "bg-blue-600"   },
+          { label: "Appointments",     icon: CalendarDays,path: "/admin/appointments", bg: "bg-emerald-600"},
+          { label: "Approvals",        icon: UserCheck,   path: "/admin/approvals",    bg: "bg-amber-600"  },
+          { label: "Support Tickets",  icon: MessageSquare,path: "/admin/contacts",   bg: "bg-violet-600" },
+        ].map(({ label, icon: Icon, path, bg }) => (
+          <button key={path} onClick={() => navigate(path)}
+            className={`${bg} hover:opacity-90 rounded-2xl px-4 py-4 text-white flex items-center gap-3 transition-all hover:-translate-y-0.5 hover:shadow-lg text-left`}
+          >
+            <div className="h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Icon className="h-5 w-5" />
+            </div>
+            <span className="font-semibold text-sm leading-tight">{label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Top 4 Main Stat Cards — symmetric colored layout */}
@@ -586,6 +628,7 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+    </div>
     </div>
   );
 };

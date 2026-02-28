@@ -206,15 +206,23 @@ const getUsers = async (req, res) => {
     const { page = 1, limit = 10, role, search } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const filter = { isDeleted: false }; // Exclude deleted users by default
+    const filter = {
+      $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }],
+    };
     if (role) {
       filter.role = role;
     }
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
+      filter.$and = [
+        { $or: filter.$or },
+        {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+          ],
+        },
       ];
+      delete filter.$or;
     }
 
     const total = await User.countDocuments(filter);

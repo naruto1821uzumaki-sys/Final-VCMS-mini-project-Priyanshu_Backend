@@ -137,96 +137,71 @@ const DoctorDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="min-h-screen bg-slate-50/60 p-4 md:p-6 space-y-5">
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      {/* ── Hero Header ─────────────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 shadow-xl">
+        <div className="px-6 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Doctor Dashboard
+            <p className="text-[11px] font-bold text-blue-400/80 uppercase tracking-widest mb-1">Doctor Portal</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              Dr. {user?.name} 👨‍⚕️
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Welcome back, <span className="font-semibold text-foreground">Dr. {user?.name}</span> — {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            <p className="text-slate-400 text-sm mt-1">
+              {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
+          <div className="flex gap-2 flex-wrap">
+            <button
               onClick={() => { fetchAppointments(); fetchUnreadCount(); toast({ title: "Refreshed!" }); }}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all"
             >
               <RefreshCw className="h-4 w-4" /> Refresh
-            </Button>
+            </button>
           </div>
         </div>
 
-        {/* ─── Stat Cards ─── */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Today */}
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
-            onClick={() => navigate("/doctor/today")}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-3">
-                <CalendarDays className="h-8 w-8 opacity-80" />
-                <span className="text-sm font-medium opacity-80">Today</span>
+        {/* Stats ribbon */}
+        <div className="border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 divide-x divide-white/10">
+          {[
+            { label: "Today",    value: todayAppointments.length,      color: "text-blue-300",   icon: CalendarDays },
+            { label: "Pending",  value: pendingAppointments.length,    color: "text-amber-300",  icon: AlertCircle  },
+            { label: "Patients", value: uniquePatients,                color: "text-emerald-300",icon: Users        },
+            { label: "Earnings", value: `₹${estimatedEarnings.toLocaleString("en-IN")}`, color: "text-violet-300", icon: IndianRupee },
+          ].map(({ label, value, color, icon: Icon }) => (
+            <div key={label} className="flex items-center gap-3 px-5 py-3">
+              <Icon className={`h-5 w-5 ${color} flex-shrink-0`} />
+              <div>
+                <p className={`text-lg font-black leading-none ${color}`}>{value}</p>
+                <p className="text-slate-400 text-[11px] mt-0.5">{label}</p>
               </div>
-              <div className="text-4xl font-bold">{todayAppointments.length}</div>
-              <p className="text-sm mt-1 opacity-80">Appointments scheduled</p>
-            </CardContent>
-          </Card>
-
-          {/* Pending — pulse when new */}
-          <Card
-            className={`border-0 shadow-lg bg-gradient-to-br from-orange-400 to-orange-500 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all ${newPending ? "ring-4 ring-orange-300 animate-pulse" : ""}`}
-            onClick={() => document.getElementById("pending-section")?.scrollIntoView({ behavior: "smooth" })}
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-3">
-                <AlertCircle className="h-8 w-8 opacity-80" />
-                <span className="text-sm font-medium opacity-80">Pending</span>
-              </div>
-              <div className="text-4xl font-bold">{pendingAppointments.length}</div>
-              <p className="text-sm mt-1 opacity-80">Requests awaiting decision</p>
-            </CardContent>
-          </Card>
-
-          {/* Total Patients */}
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
-            onClick={() => navigate("/doctor/patients")}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-3">
-                <Users className="h-8 w-8 opacity-80" />
-                <span className="text-sm font-medium opacity-80">Patients</span>
-              </div>
-              <div className="text-4xl font-bold">{uniquePatients}</div>
-              <p className="text-sm mt-1 opacity-80">Total unique patients</p>
-            </CardContent>
-          </Card>
-
-          {/* Estimated Earnings */}
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
-            onClick={() => document.getElementById("completed-section")?.scrollIntoView({ behavior: "smooth" })}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-3">
-                <IndianRupee className="h-8 w-8 opacity-80" />
-                <span className="text-sm font-medium opacity-80">Earnings</span>
-              </div>
-              <div className="text-4xl font-bold">₹{estimatedEarnings.toLocaleString("en-IN")}</div>
-              {estimatedEarnings === 0 && completedAppointments.length > 0 ? (
-                <p className="text-sm mt-1 opacity-90 underline cursor-pointer" onClick={(e) => { e.stopPropagation(); navigate("/profile"); }}>
-                  Set consultation fee in Profile ↗
-                </p>
-              ) : (
-                <p className="text-sm mt-1 opacity-80">{completedAppointments.length} completed × ₹{feePerConsult} each</p>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+          ))}
         </div>
+      </div>
 
+      {/* Quick nav */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Today's Patients", icon: CalendarDays, path: "/doctor/today",    bg: "bg-blue-600",    anchor: "today-section"    },
+          { label: "My Patients",      icon: Users,        path: "/doctor/patients", bg: "bg-emerald-600", anchor: null               },
+          { label: "Appointments",     icon: Activity,     path: "/doctor/appointments", bg: "bg-violet-600", anchor: null            },
+          { label: "Prescriptions",    icon: FileText,     path: "/doctor/prescriptions", bg: "bg-indigo-600", anchor: null           },
+        ].map(({ label, icon: Icon, path, bg }) => (
+          <button
+            key={path}
+            onClick={() => navigate(path)}
+            className={`${bg} hover:opacity-90 rounded-2xl px-4 py-4 text-white flex items-center gap-3 transition-all hover:-translate-y-0.5 hover:shadow-lg text-left group`}
+          >
+            <div className="h-9 w-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Icon className="h-5 w-5" />
+            </div>
+            <span className="font-semibold text-sm leading-tight">{label}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* ─── Pending Requests ─── */}
+      {/* ─── Pending Requests ─── */}
         <div id="pending-section">
           <Card className={`border-0 shadow-lg ${pendingAppointments.length > 0 ? "ring-2 ring-orange-200" : ""}`}>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -430,7 +405,6 @@ const DoctorDashboard = () => {
         </div>
 
 
-      </div>
     </div>
   );
 };
